@@ -1,5 +1,5 @@
 import { postAnnouncement, renderAnnouncements, renderGlobalBanner, saveGlobalBanner } from "./ann.js";
-import { BE, signIn, toast, usingFirebase } from "./backend.js";
+import { BE, toast, usingFirebase } from "./backend.js";
 import { calCursor, setCalCursor, renderCalendar } from "./cal.js";
 import { MONTHS } from "./data.js";
 import { postHelp, renderHelp } from "./help.js";
@@ -10,6 +10,7 @@ import { ADMIN_HASH, hashPass, paintAdminSheet, setAdminUnlocked, state } from "
 import { openNameSheet, svgIcon } from "./text.js";
 import { openSiteEditor } from "./adminpanel.js";
 import { replayReveal } from "./fx.js";
+import { wireAuthSheet, openAuthSheet } from "./auth.js";
 import { openWorkSheet, closeWorkSheet, saveWork, deleteWork, renderWork, renderWorkFilters } from "./work.js";
 import { syncClassroom, classroomLabel } from "./classroom.js";
 
@@ -99,7 +100,7 @@ function setTab(name){
 function wire(){
   document.addEventListener("click", function(e){
     var t = e.target;
-    if (t && t.closest && t.closest(".js-signin")) signIn();
+    if (t && t.closest && t.closest(".js-signin")) openAuthSheet();
   });
   document.getElementById("tabs").addEventListener("click", function(e){
     var btn = e.target.closest("button[data-tab]");
@@ -114,6 +115,8 @@ function wire(){
     var card = document.getElementById("lineupCard");
     if (card) card.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block:"start" });
   });
+
+  wireAuthSheet();
 
   var syncW = document.getElementById("workSyncBtn");
   if (syncW){
@@ -212,8 +215,8 @@ function wire(){
   document.getElementById("postBtn").addEventListener("click", postHelp);
   document.getElementById("postAsBtn").addEventListener("click", function(){
     if (usingFirebase()){
-      toast(BE.user ? "Your name comes from your Google account." : "Sign in to post.");
-      if (!BE.user) signIn();
+      if (!BE.user){ openAuthSheet(); return; }
+      toast("Your name comes from the account you signed in with.");
       return;
     }
     openNameSheet(null);

@@ -7,6 +7,7 @@ import { renderWork, renderWorkFilters, paintWorkChip, loadLocalDone } from "./w
 import { state } from "./state.js";
 import { bumpLive } from "./live.js";
 import { renderLiveConfig } from "./orbit.js";
+import { openAuthSheet } from "./auth.js";
 
 /* =========================================================
    BACKEND — one data layer, two drivers.
@@ -318,9 +319,9 @@ function paintAuth(){
       btn.onclick = signOutNow;
     } else {
       who.hidden = true;
-      btn.textContent = "Sign in with Google";
+      btn.textContent = "Sign in";
       btn.className = "auth-btn";
-      btn.onclick = signIn;
+      btn.onclick = openAuthSheet;
     }
   } else {
     btn.hidden = true;

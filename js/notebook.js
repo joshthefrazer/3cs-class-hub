@@ -106,7 +106,7 @@ function renderNotebook(){
     empty.innerHTML = svgIcon("i-lock","big") +
       "<h3>Sign in to open the notebook</h3>" +
       "<p>The class notebook is shared, so the Hub needs to know who you are before it will show it.</p>" +
-      '<div class="gate-actions"><button class="btn js-signin">Sign in with Google</button></div>';
+      '<div class="gate-actions"><button class="btn js-signin">Sign in</button></div>';
     return;
   }
 

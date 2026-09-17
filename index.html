@@ -28,6 +28,7 @@
 <link rel="stylesheet" href="styles/boards.css">
 <link rel="stylesheet" href="styles/overlays.css">
 <link rel="stylesheet" href="styles/schedule-bells.css">
+<link rel="stylesheet" href="styles/auth.css">
 <link rel="stylesheet" href="styles/work.css">
 <link rel="stylesheet" href="styles/palette.css">
 <link rel="stylesheet" href="styles/admin.css">
@@ -474,6 +475,55 @@
 <div class="kbd-hint" id="kbdHint"><b>ctrl</b>+<b>K</b> search anything &middot; <b>1</b>&ndash;<b>6</b> jump between worlds</div>
 
 <footer>3CS Class Hub &middot; built from the official Itz'at STEAM Academy 2026&ndash;2027 calendar &middot; last synced content may lag live edits by a moment</footer>
+
+<div class="sheet" id="authSheet" hidden>
+  <div class="box auth-box">
+    <div class="sheet-head">
+      <div>
+        <h2 id="authSheetTitle">Sign in</h2>
+        <p class="hint" id="authSheetSub">Use your school email, or continue with Google if your account allows it.</p>
+      </div>
+      <button class="sheet-close" id="authSheetClose" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"></use></svg></button>
+    </div>
+
+    <button class="btn google-btn" id="authGoogleBtn" type="button">
+      <svg class="ic goog" viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#4285F4" stroke="none" d="M21.6 12.23c0-.71-.06-1.4-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-2 3.02v2.5h3.24c1.9-1.74 2.98-4.3 2.98-7.35z"/>
+        <path fill="#34A853" stroke="none" d="M12 22c2.7 0 4.96-.9 6.62-2.42l-3.24-2.5c-.9.6-2.05.96-3.38.96-2.6 0-4.8-1.75-5.59-4.1H3.06v2.58A10 10 0 0 0 12 22z"/>
+        <path fill="#FBBC05" stroke="none" d="M6.41 13.94a6 6 0 0 1 0-3.84V7.52H3.06a10 10 0 0 0 0 8.98l3.35-2.56z"/>
+        <path fill="#EA4335" stroke="none" d="M12 5.94c1.47 0 2.79.5 3.83 1.5l2.87-2.87C16.95 2.98 14.7 2 12 2a10 10 0 0 0-8.94 5.52l3.35 2.58C7.2 7.7 9.4 5.94 12 5.94z"/>
+      </svg>
+      <span>Continue with Google</span>
+    </button>
+
+    <div class="auth-or"><span>or use your email</span></div>
+
+    <label class="field" id="authNameField" hidden>
+      <span>Your name</span>
+      <input id="authName" type="text" autocomplete="name" placeholder="How the class knows you">
+    </label>
+    <label class="field">
+      <span>Email</span>
+      <input id="authEmail" type="email" autocomplete="email" inputmode="email" placeholder="you@sls.edu.bz">
+    </label>
+    <label class="field" id="authPassField">
+      <span>Password</span>
+      <input id="authPassword" type="password" autocomplete="current-password" placeholder="At least six characters">
+    </label>
+
+    <div class="status-line" id="authErr"></div>
+    <p class="hint auth-note" id="authNote" hidden></p>
+
+    <button class="btn" id="authGoBtn" type="button" style="width:100%;margin-top:4px;">Sign in</button>
+
+    <div class="auth-links">
+      <button class="linkbtn" id="authSwapBtn" type="button">New here? Create an account</button>
+      <button class="linkbtn" id="authForgotBtn" type="button">Forgot your password?</button>
+    </div>
+
+    <p class="hint auth-fine">Your password goes straight from this box to Google's sign-in service. The Hub never sees it, stores it, or writes it anywhere.</p>
+  </div>
+</div>
 
 <div class="sheet" id="workSheet" hidden>
   <div class="box">

@@ -1,0 +1,41 @@
+/* ---------- sign-in sheet ---------- */
+  .auth-box{ max-width:410px; display:flex; flex-direction:column; gap:13px; }
+  .auth-box .sheet-head{ margin-bottom:2px; }
+  .auth-box .sheet-head h2{ margin:0 0 4px; }
+  .auth-box .sheet-head .hint{ margin:0; max-width:34ch; }
+
+  .google-btn{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    width:100%;
+    background:#fff; color:#1f2430; border:none;
+  }
+  .google-btn:hover{ background:#f1f3f7; color:#12151d; }
+  .google-btn svg.ic.goog{
+    width:18px; height:18px; stroke:none; flex:none;
+  }
+
+  .auth-or{
+    display:flex; align-items:center; gap:11px;
+    font-size:.72rem; color:var(--muted);
+    margin:2px 0;
+  }
+  .auth-or::before, .auth-or::after{
+    content:""; flex:1; height:1px; background:var(--edge-soft);
+  }
+
+  .auth-note{
+    margin:0; color:var(--accent);
+  }
+  .auth-links{
+    display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    margin-top:2px;
+  }
+  .auth-links .linkbtn{ font-size:.78rem; }
+  .auth-fine{
+    margin:6px 0 0; font-size:.72rem; line-height:1.55; color:var(--muted);
+    border-top:1px solid var(--edge-soft); padding-top:11px;
+  }
+
+  @media (max-width:420px){
+    .auth-links{ flex-direction:column; gap:6px; }
+  }

@@ -64,7 +64,7 @@ function renderHelp(){
     empty.innerHTML = svgIcon("i-lock","big") +
       "<h3>Sign in to use the help board</h3>" +
       "<p>Posting and answering needs a signed-in account so replies carry a real name.</p>" +
-      '<div class="gate-actions"><button class="btn js-signin">Sign in with Google</button></div>';
+      '<div class="gate-actions"><button class="btn js-signin">Sign in</button></div>';
     return;
   }
 

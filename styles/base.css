@@ -1,4 +1,12 @@
 /* ---------- layout ---------- */
+  /* The backdrop is deliberately bigger than the window — the planet is over
+     500px across on a phone, and the aurora drifts past both edges. Clipped at
+     the root so none of that turns into a sideways scroll. `clip` rather than
+     `hidden` on purpose: `hidden` would make the root a scroll container and
+     break the sticky header. */
+  html{ overflow-x:clip; }
+  body{ overflow-x:clip; }
+
   /* A scrim under the content column: the planet stays a backdrop, and
      anything scrolled over it keeps its contrast. */
   .scrim{
