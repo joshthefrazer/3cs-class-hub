@@ -5,11 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="Schedule, calendar, notebook and help board for 3CS at Itz'at STEAM Academy, 2026-2027.">
 <style>
-  :root{
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-  body{ margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size:14px; }
+  :root{ padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body{ margin:0; font-family: system-ui, sans-serif; font-size:14px; }
   img{ max-width:100%; }
   [hidden]{ display:none !important; }
 </style>
@@ -978,6 +975,23 @@
   #staticBar svg.ic{ color:var(--amber); flex:none; }
   #staticBar a{ color:#fff; }
 
+  .hdr-right{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .auth-who{
+    font-family:"IBM Plex Mono",monospace; font-size:.7rem; color:var(--ink-dim);
+    letter-spacing:.04em; max-width:230px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .auth-btn{
+    background:var(--accent); color:#04120f; border:none; border-radius:999px;
+    padding:8px 16px; font-weight:600; font-size:.78rem; cursor:pointer;
+    transition:transform .2s var(--ease), box-shadow .3s var(--ease);
+  }
+  .auth-btn:hover{ transform:translateY(-1px); box-shadow:0 8px 24px -10px var(--accent); }
+  .auth-btn.ghost{
+    background:var(--glass); color:var(--ink-dim); border:1px solid var(--edge); font-weight:500;
+  }
+  .auth-btn.ghost:hover{ box-shadow:none; border-color:var(--muted); }
+  .gate-actions{ margin-top:16px; display:flex; justify-content:center; }
+
   /* ---------- responsive ---------- */
   @media (max-width:560px){
     .brand h1{ font-size:1.02rem; }
@@ -1140,7 +1154,11 @@
         <div class="sub">Itz'at STEAM Academy &middot; 2026&ndash;2027</div>
       </div>
     </div>
-    <button class="admin-toggle" id="adminToggleBtn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-lock"></use></svg><span>Admin</span></button>
+    <div class="hdr-right">
+      <span class="auth-who" id="authWho" hidden></span>
+      <button class="auth-btn" id="authBtn" type="button" hidden>Sign in</button>
+      <button class="admin-toggle" id="adminToggleBtn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-lock"></use></svg><span>Admin</span></button>
+    </div>
   </div>
   <nav class="tabs" id="tabs">
     <button data-tab="schedule" class="active">Schedule</button>
@@ -1426,6 +1444,31 @@
     <p class="hint" style="margin-top:16px;">The passcode keeps the edit buttons out of the way of the class &mdash; it is a lock on the <em>interface</em>, not on the data. Anyone determined enough to read the page's code can get past it. What actually decides whether a save goes through is this Hub's sharing permission: the owner shares it with someone as <strong>can edit</strong> to make them a real admin.</p>
   </div>
 </div>
+
+<script>
+  /* ------------------------------------------------------------------
+     PASTE YOUR FIREBASE CONFIG HERE.
+
+     Firebase Console -> Project settings -> Your apps -> Web app -> Config.
+
+     These values are PUBLIC by design. They identify the project; they do
+     not grant access to anything. Every real permission is enforced by the
+     rules in firestore.rules, on Google's servers. It is normal and safe to
+     commit this block to a public repository.
+     ------------------------------------------------------------------ */
+  window.FIREBASE_CONFIG = {
+    apiKey: "AIzaSyDvaqe2wLfEQT6Rdv8EDkBqVIuihqxezoU",
+    authDomain: "cs-class-hub.firebaseapp.com",
+    projectId: "cs-class-hub",
+    storageBucket: "cs-class-hub.firebasestorage.app",
+    messagingSenderId: "259707534583",
+    appId: "1:259707534583:web:55e34a6daa19559e5ba7f2"
+  };
+
+  /* The account that is always an admin. Everyone else gets admin by being
+     listed in the config/admins document. Must match the rules file. */
+  window.HUB_OWNER = "joshthefrazer@gmail.com";
+</script>
 
 <script>
 (function(){
@@ -1771,7 +1814,9 @@
     announcements: [],
     notebookNote: null,
     legend: null,
-    notes: [],             // shared notebook notes from db
+    notes: [],             // public notebook notes
+    myNotes: [],           // notes you authored, any visibility (firebase)
+    privNotes: [],         // your private notes, server-side (firebase)
     notesLoaded: false,
     posts: [],             // help board posts from db
     postsLoaded: false,
@@ -1823,9 +1868,34 @@
     if (f) f.value = "";
   }
 
-  /* --- soft identity: a device token + a display name the viewer picks.
-     This is a convenience, NOT a security boundary — the page has no way to
-     verify who anyone is, and the UI says so. --- */
+  /* =========================================================
+     BACKEND — one data layer, two drivers.
+
+       hosted normally (GitHub Pages, Netlify, a local file)
+         -> Firebase: Firestore + Google sign-in. Real identity, real
+            privacy, permissions enforced on the server.
+
+       inside the Claude Hub
+         -> Claude's artifact db. The artifact sandbox blocks outbound
+            connections to non-allowlisted hosts, so Firestore cannot talk
+            to its servers there; the built-in db is used instead, with the
+            soft device identity it has always had.
+
+     Both drivers expose the same doc()/collection() surface, so everything
+     below this block is written once and runs on either.
+     ========================================================= */
+  var BE = {
+    kind: null,      // "firebase" | "artifact" | null
+    db: null,
+    auth: null,
+    user: null,      // { id, name, email, photo } once signed in
+    isAdmin: false
+  };
+  function usingFirebase(){ return BE.kind === "firebase"; }
+  function signedIn(){ return !usingFirebase() || !!BE.user; }
+
+  /* Soft identity: only used by the artifact driver, which cannot verify
+     anyone. On Firebase this is replaced by the real signed-in account. */
   var ME = (function(){
     var token = null, name = null;
     try{
@@ -1838,14 +1908,27 @@
     }
     return { token: token, name: name };
   })();
-  function myName(){ return ME.name || "Anonymous"; }
+
+  function meId(){ return BE.user ? BE.user.id : ME.token; }
+  function myName(){ return BE.user ? BE.user.name : (ME.name || "Anonymous"); }
   function setMyName(n){
     ME.name = n;
     try{ localStorage.setItem("3cs_name", n); }catch(e){}
     var b = document.getElementById("postAsBtn");
     if (b) b.textContent = myName();
   }
-  function mine(row){ return row && row.authorToken === ME.token; }
+  /* Authorship: a verified uid on Firebase, a device token on the artifact. */
+  function mine(row){
+    if (!row) return false;
+    var id = meId();
+    return row.authorUid === id || (!row.authorUid && row.authorToken === id);
+  }
+  function authorFields(){
+    return BE.user
+      ? { authorUid: BE.user.id, authorName: BE.user.name, authorEmail: BE.user.email }
+      : { authorToken: ME.token, authorName: myName() };
+  }
+  function canAdmin(){ return usingFirebase() ? BE.isAdmin : state.adminMode; }
 
   function fmtWhen(iso){
     try{
@@ -1876,6 +1959,15 @@
   }
   function dbErrMsg(err){
     var c = err && err.code;
+    if (c === "permission-denied")
+      return "The server refused that change — you don't have permission for it.";
+    if (c === "unauthenticated") return "Sign in first.";
+    if (c === "unavailable")     return "Can't reach the server right now. Check your connection.";
+    if (c === "not-found")       return "That item no longer exists.";
+    if (c === "resource-exhausted")
+      return "The Hub has hit today's free usage limit. It resets after midnight.";
+    if (c === "failed-precondition")
+      return "The database needs an index for that query — an admin has to create it once.";
     if (c === "invalid_argument")
       return "That save was rejected — you may not have permission for it on this account.";
     if (c === "resource_exhausted") return "Too many updates at once — wait a second and try again.";
@@ -1893,29 +1985,216 @@
   function saveConfig(patch, okMsg){
     var db = requireDb(); if (!db) return;
     var next = Object.assign({}, state.config || {}, patch);
-    db.doc("site/config").set(next)
+    BE.db.doc("config/site").set(next)
       .then(function(){ toast(okMsg || "Saved for everyone."); })
       .catch(function(err){ toast(dbErrMsg(err), true); });
   }
 
+  /* Nested-map writes differ between the drivers: the artifact db merges a
+     nested object into what's there, Firestore REPLACES the whole map unless
+     you address the field by path. Writing reactions the naive way would wipe
+     everyone else's. This picks the right form for the active driver. */
+  function mergeField(ref, mapName, key, value){
+    if (usingFirebase()){
+      var patch = {};
+      patch[mapName + "." + key] = value;
+      return ref.update(patch);
+    }
+    var nested = {}, inner = {};
+    inner[key] = value;
+    nested[mapName] = inner;
+    return ref.update(nested);
+  }
+
+  var streams = [];
+  function stopStreams(){
+    streams.forEach(function(u){ try{ u(); }catch(e){} });
+    streams = [];
+  }
+
   function initDb(){
-    /* No window.claude at all means this is a standalone copy of the file
-       (saved, or hosted somewhere like GitHub Pages) rather than the live Hub. */
-    if (!window.claude || !window.claude.use){
-      state.standalone = true;
-      state.dbSettled = true;
-      var bar = document.getElementById("staticBar");
-      if (bar) bar.hidden = false;
-      renderAllFallback();
+    /* Inside the Hub the artifact db is the only backend that can reach a
+       server, so it wins when present. Anywhere else, Firebase. */
+    if (window.claude && window.claude.use){
+      window.claude.use("db").then(function(db){
+        if (db){
+          BE.kind = "artifact";
+          BE.db = db;
+          state.db = db;
+          state.dbReady = true;
+          state.dbSettled = true;
+          startStreams();
+          paintAuth();
+          return;
+        }
+        initFirebase();
+      }).catch(initFirebase);
       return;
     }
-    window.claude.use("db").then(function(db){
-      state.dbSettled = true;
-      if (!db){ renderAllFallback(); return; }
-      state.db = db;
-      state.dbReady = true;
+    initFirebase();
+  }
 
-      db.doc("site/config").onSnapshot(function(snap){
+  /* The SDK is fetched only when Firebase is the driver we're going to use,
+     so the Hub copy never downloads it. jsdelivr is on the artifact CSP
+     allowlist; gstatic (Firebase's usual host) is not. */
+  var FB_VERSION = "12.19.0";
+  function loadFirebaseSdk(){
+    return new Promise(function(resolve, reject){
+      if (window.firebase && window.firebase.firestore) return resolve();
+      var base = "https://cdn.jsdelivr.net/npm/firebase@" + FB_VERSION + "/";
+      var files = ["firebase-app-compat.js", "firebase-auth-compat.js", "firebase-firestore-compat.js"];
+      (function next(i){
+        if (i >= files.length) return resolve();
+        var s = document.createElement("script");
+        s.src = base + files[i];
+        s.onload = function(){ next(i + 1); };
+        s.onerror = function(){ reject(new Error("Firebase SDK failed to load")); };
+        document.head.appendChild(s);
+      })(0);
+    });
+  }
+
+  function initFirebase(){
+    var cfg = window.FIREBASE_CONFIG;
+    if (!cfg || !cfg.projectId){
+      showUnconfigured();
+      return;
+    }
+    loadFirebaseSdk().then(startFirebase).catch(function(){
+      toast("Couldn't load the database library — check your connection.", true);
+      showUnconfigured();
+    });
+  }
+
+  function showUnconfigured(){
+    state.standalone = true;
+    state.dbSettled = true;
+    var bar = document.getElementById("staticBar");
+    if (bar) bar.hidden = false;
+    renderAllFallback();
+    paintAuth();
+  }
+
+  function startFirebase(){
+    var cfg = window.FIREBASE_CONFIG;
+    if (!window.firebase){
+      showUnconfigured();
+      return;
+    }
+    try{
+      if (!firebase.apps.length) firebase.initializeApp(cfg);
+      BE.kind = "firebase";
+      BE.db   = firebase.firestore();
+      BE.auth = firebase.auth();
+      state.db = BE.db;
+      BE.auth.onAuthStateChanged(function(u){
+        stopStreams();
+        if (u){
+          BE.user = {
+            id: u.uid,
+            name: u.displayName || u.email || "Someone",
+            email: (u.email || "").toLowerCase(),
+            photo: u.photoURL || ""
+          };
+          checkAdmin().then(function(){
+            state.dbReady = true;
+            state.dbSettled = true;
+            startStreams();
+            paintAuth();
+            applyAdminMode();
+          });
+        } else {
+          BE.user = null;
+          BE.isAdmin = false;
+          state.dbReady = false;
+          state.dbSettled = true;
+          state.notes = []; state.posts = []; state.announcements = [];
+          state.notesLoaded = false; state.postsLoaded = false;
+          paintAuth();
+          applyAdminMode();
+          renderNotebook(); renderHelp(); renderAnnouncements();
+        }
+      });
+    }catch(e){
+      state.dbSettled = true;
+      renderAllFallback();
+      paintAuth();
+    }
+  }
+
+  /* Admin is a real permission on Firebase: the owner email baked into the
+     rules, plus anyone listed in config/admins. The rules enforce the same
+     list server-side, so this only decides what the UI offers. */
+  function checkAdmin(){
+    BE.isAdmin = false;
+    if (!BE.user) return Promise.resolve();
+    var owner = String(window.HUB_OWNER || "").toLowerCase();
+    if (owner && BE.user.email === owner) BE.isAdmin = true;
+    return BE.db.doc("config/admins").get().then(function(s){
+      var list = (s.exists && s.data() && s.data().emails) || [];
+      for (var i = 0; i < list.length; i++){
+        if (String(list[i]).toLowerCase() === BE.user.email){ BE.isAdmin = true; break; }
+      }
+    }).catch(function(){ /* unreadable is not fatal — stay non-admin */ });
+  }
+
+  function signIn(){
+    if (!BE.auth) return;
+    var p = new firebase.auth.GoogleAuthProvider();
+    p.setCustomParameters({ prompt: "select_account" });
+    BE.auth.signInWithPopup(p).catch(function(err){
+      var c = err && err.code;
+      if (c === "auth/popup-closed-by-user" || c === "auth/cancelled-popup-request") return;
+      if (c === "auth/unauthorized-domain"){
+        toast("This web address isn't authorised in the Firebase project yet.", true);
+        return;
+      }
+      toast("Couldn't sign in: " + (err && err.message ? err.message : "unknown error"), true);
+    });
+  }
+  function signOutNow(){
+    if (BE.auth) BE.auth.signOut().then(function(){ toast("Signed out."); });
+  }
+
+  function paintAuth(){
+    var btn = document.getElementById("authBtn");
+    var who = document.getElementById("authWho");
+    var adminBtn = document.getElementById("adminToggleBtn");
+    if (!btn || !who || !adminBtn) return;
+
+    var pab = document.getElementById("postAsBtn");
+    if (pab) pab.textContent = usingFirebase() && !BE.user ? "someone (sign in)" : myName();
+    paintTrustNotes();
+
+    if (usingFirebase()){
+      /* Real permissions replace the passcode entirely. */
+      adminBtn.hidden = true;
+      btn.hidden = false;
+      if (BE.user){
+        who.hidden = false;
+        who.textContent = BE.user.name + (BE.isAdmin ? " · admin" : "");
+        btn.textContent = "Sign out";
+        btn.className = "auth-btn ghost";
+        btn.onclick = signOutNow;
+      } else {
+        who.hidden = true;
+        btn.textContent = "Sign in with Google";
+        btn.className = "auth-btn";
+        btn.onclick = signIn;
+      }
+    } else {
+      btn.hidden = true;
+      who.hidden = true;
+      adminBtn.hidden = false;
+    }
+  }
+
+  function startStreams(){
+    var db = BE.db;
+    if (!db) return;
+    stopStreams();
+
+    streams.push(db.doc("config/site").onSnapshot(function(snap){
         var data = snap.exists ? snap.data() : {};
         state.config = data;
         state.globalBanner = data.globalBanner || null;
@@ -1925,9 +2204,9 @@
         renderNotebookIntro();
         renderLegend();
         renderSubjectSelectors();
-      }, function(){ /* terminal: keep last-known content on screen */ });
+      }, function(){ /* terminal: keep last-known content on screen */ }));
 
-      db.collection("announcements").orderBy("createdAt","desc").limit(50).onSnapshot(function(qs){
+    streams.push(db.collection("announcements").orderBy("createdAt","desc").limit(50).onSnapshot(function(qs){
         var items = [];
         qs.docs.forEach(function(d){ items.push(Object.assign({id:d.id}, d.data())); });
         items.sort(function(a,b){
@@ -1939,9 +2218,15 @@
         renderAnnouncements();
       }, function(){
         document.getElementById("feedStatus").textContent = "Live feed unavailable in this view.";
-      });
+      }));
 
-      db.collection("notebook").orderBy("updatedAt","desc").limit(200).onSnapshot(function(qs){
+    /* Link-only notes are excluded server-side by the rules, so the browse
+       query asks only for public ones. Your own link-only notes come back
+       through the private/authored stream below. */
+    var nbQuery = usingFirebase()
+      ? db.collection("notebook").where("visibility","==","public").orderBy("updatedAt","desc").limit(200)
+      : db.collection("notebook").orderBy("updatedAt","desc").limit(200);
+    streams.push(nbQuery.onSnapshot(function(qs){
         var items = [];
         qs.docs.forEach(function(d){
           items.push(Object.assign({id:d.id}, d.data()));
@@ -1950,9 +2235,35 @@
         state.notes = items;
         state.notesLoaded = true;
         renderNotebook();
-      }, function(){ state.notesLoaded = true; renderNotebook(); });
+      }, function(){ state.notesLoaded = true; renderNotebook(); }));
 
-      db.collection("help").orderBy("createdAt","desc").limit(200).onSnapshot(function(qs){
+    /* Notes you wrote, whatever their visibility — so link-only ones you
+       created stay findable from the device that made them. */
+    if (usingFirebase() && BE.user){
+      streams.push(db.collection("notebook").where("authorUid","==",BE.user.id).limit(200)
+        .onSnapshot(function(qs){
+          var items = [];
+          qs.docs.forEach(function(d){
+            items.push(Object.assign({id:d.id}, d.data()));
+            delete state.pending["nb:"+d.id];
+          });
+          state.myNotes = items;
+          renderNotebook();
+        }, function(){}));
+
+      /* Private notes now live server-side under your own uid, so they
+         follow you between devices and nobody else can read them. */
+      streams.push(db.collection("users").doc(BE.user.id).collection("private")
+        .orderBy("updatedAt","desc").limit(200)
+        .onSnapshot(function(qs){
+          var items = [];
+          qs.docs.forEach(function(d){ items.push(Object.assign({id:d.id, _priv:true}, d.data())); });
+          state.privNotes = items;
+          renderNotebook();
+        }, function(){}));
+    }
+
+    streams.push(db.collection("help").orderBy("createdAt","desc").limit(200).onSnapshot(function(qs){
         var items = [];
         qs.docs.forEach(function(d){
           items.push(Object.assign({id:d.id}, d.data()));
@@ -1961,9 +2272,7 @@
         state.posts = items;
         state.postsLoaded = true;
         renderHelp();
-      }, function(){ state.postsLoaded = true; renderHelp(); });
-
-    }).catch(function(){ state.dbSettled = true; renderAllFallback(); });
+      }, function(){ state.postsLoaded = true; renderHelp(); }));
   }
 
   function renderAllFallback(){
@@ -1973,8 +2282,8 @@
     renderNotebook();
     renderHelp();
     document.getElementById("feedStatus").textContent = state.standalone
-      ? "This is a static copy of the Hub — announcements only load on the live page."
-      : "Live announcements aren't available in this view — you need to be signed in to the organization that owns this Hub.";
+      ? "The shared features aren't connected on this copy — the schedule and calendar still work."
+      : "Live announcements aren't available in this view.";
   }
 
   /* =========================================================
@@ -2361,19 +2670,33 @@
   }
 
   function allNotes(){
-    var shared = state.notes.slice();
+    var seen = {}, out = [];
+    function push(n){
+      if (!n || !n.id || seen[n.id]) return;
+      seen[n.id] = 1; out.push(n);
+    }
     Object.keys(state.pending).forEach(function(k){
-      if (k.indexOf("nb:") === 0) shared.unshift(Object.assign({ _pending:true }, state.pending[k]));
+      if (k.indexOf("nb:") === 0) push(Object.assign({ _pending:true }, state.pending[k]));
     });
-    var priv = localNotes().map(function(n){ return Object.assign({}, n, { _local:true, visibility:"private" }); });
-    return shared.concat(priv);
+    state.notes.forEach(push);
+    if (usingFirebase()){
+      state.myNotes.forEach(push);
+      state.privNotes.forEach(function(n){
+        push(Object.assign({}, n, { _priv:true, visibility:"private" }));
+      });
+    } else {
+      localNotes().forEach(function(n){
+        push(Object.assign({}, n, { _local:true, visibility:"private" }));
+      });
+    }
+    return out;
   }
   function visibleNotes(){
     var q = state.nbQuery.trim().toLowerCase();
     return allNotes().filter(function(n){
       // Link-only notes are hidden from the browse list for everyone but their
       // creator's device and admins — reachable, but not advertised.
-      if (n.visibility === "link" && !n._local && !mine(n) && !state.adminMode) return false;
+      if (n.visibility === "link" && !n._local && !n._priv && !mine(n) && !canAdmin()) return false;
       if (state.nbSubject !== "all" && (n.subject || "general") !== state.nbSubject) return false;
       if (state.nbVis !== "all" && (n.visibility || "public") !== state.nbVis) return false;
       if (q && ((n.title || "") + " " + (n.body || "")).toLowerCase().indexOf(q) === -1) return false;
@@ -2409,6 +2732,16 @@
       return;
     }
 
+    if (usingFirebase() && !BE.user){
+      grid.innerHTML = "";
+      empty.hidden = false;
+      empty.innerHTML = svgIcon("i-lock","big") +
+        "<h3>Sign in to open the notebook</h3>" +
+        "<p>The class notebook is shared, so the Hub needs to know who you are before it will show it.</p>" +
+        '<div class="gate-actions"><button class="btn js-signin">Sign in with Google</button></div>';
+      return;
+    }
+
     var notes = visibleNotes();
     grid.innerHTML = "";
 
@@ -2433,7 +2766,9 @@
       var vis = n.visibility || "public";
       var visBadge = document.createElement("span");
       visBadge.className = "badge " + (vis === "link" ? "link" : vis === "private" ? "priv" : "pub");
-      visBadge.textContent = vis === "link" ? "Link only" : vis === "private" ? "This device" : "Public";
+        visBadge.textContent = vis === "link" ? "Link only"
+                           : vis === "private" ? (usingFirebase() ? "Private" : "This device")
+                           : "Public";
       var subjBadge = document.createElement("span");
       subjBadge.className = "badge subj";
       subjBadge.textContent = (n.subject && n.subject !== "general") ? n.subject : "General";
@@ -2448,7 +2783,9 @@
       var foot = document.createElement("div");
       foot.className = "note-foot";
       var who = document.createElement("span");
-      who.textContent = n._local ? "Only on this device" : (n.authorName || "Anonymous");
+      who.textContent = n._priv ? "Private to you"
+                      : n._local ? "Only on this device"
+                      : (n.authorName || "Anonymous");
       var when = document.createElement("span");
       when.textContent = fmtAgo(n.updatedAt);
       foot.appendChild(who); foot.appendChild(when);
@@ -2460,7 +2797,7 @@
   }
 
   function openNote(note){
-    var canEdit = note._local || mine(note) || state.adminMode;
+    var canEdit = note._local || note._priv || mine(note) || canAdmin();
     var vis = note.visibility || "public";
     var shareHtml = vis === "link"
       ? '<div class="sharebox"><input id="nvLink" readonly aria-label="Share link">' +
@@ -2542,6 +2879,12 @@
   }
 
   function persistNoteBody(note){
+    if (note._priv && BE.user){
+      BE.db.collection("users").doc(BE.user.id).collection("private").doc(note.id)
+        .update({ body: note.body, updatedAt: note.updatedAt })
+        .catch(function(err){ toast(dbErrMsg(err), true); });
+      return;
+    }
     if (note._local){
       var arr = localNotes().map(function(n){
         return n.id === note.id ? Object.assign({}, n, { body: note.body, updatedAt: note.updatedAt }) : n;
@@ -2556,6 +2899,12 @@
   }
 
   function deleteNote(note){
+    if (note._priv && BE.user){
+      BE.db.collection("users").doc(BE.user.id).collection("private").doc(note.id).delete()
+        .then(function(){ closeSheet(); toast("Private note deleted."); })
+        .catch(function(err){ toast(dbErrMsg(err), true); });
+      return;
+    }
     if (note._local){
       setLocalNotes(localNotes().filter(function(n){ return n.id !== note.id; }));
       closeSheet(); renderNotebook(); toast("Note deleted from this device.");
@@ -2567,11 +2916,17 @@
       .catch(function(err){ toast(dbErrMsg(err), true); });
   }
 
-  var VIS_HINTS = {
-    "public":  "Everyone who can open this Hub sees it in the notebook list.",
-    "link":    "Hidden from the list, but anyone signed in who has the link can open it. That's link-secrecy, not a lock.",
-    "private": "Saved in this browser only. It won't appear on your phone or another computer, and nobody else — admins included — can see or recover it."
-  };
+  function visHintText(kind){
+    if (kind === "public") return "Everyone signed in to the Hub sees it in the notebook list.";
+    if (kind === "link"){
+      return usingFirebase()
+        ? "Kept out of the notebook list by the server — it can only be opened by someone who has its link."
+        : "Hidden from the list, but anyone signed in who has the link can open it. That's link-secrecy, not a lock.";
+    }
+    return usingFirebase()
+      ? "Stored under your account, where the security rules let nobody else read it — not classmates, not admins. It follows you to your phone."
+      : "Saved in this browser only. It won't appear on your phone or another computer, and nobody else — admins included — can see or recover it.";
+  }
 
   function openNoteEditor(existing){
     var n = existing || { title:"", body:"", subject:"general", visibility:"public" };
@@ -2600,7 +2955,7 @@
     var visSel = box.querySelector("#neVis");
     visSel.value = n.visibility || "public";
     var visHint = box.querySelector("#neVisHint");
-    function paintHint(){ visHint.textContent = VIS_HINTS[visSel.value] || ""; }
+    function paintHint(){ visHint.textContent = visHintText(visSel.value); }
     paintHint();
     visSel.addEventListener("change", paintHint);
     box.querySelector("#neCancel").addEventListener("click", closeSheet);
@@ -2622,6 +2977,26 @@
     var wasLocal = !!(existing && existing._local);
 
     if (data.visibility === "private"){
+      /* On Firebase a private note lives under your own uid, where the rules
+         let nobody else read it — so it syncs to your phone and is genuinely
+         private. On the artifact it stays in this browser, as before. */
+      if (usingFirebase()){
+        if (!BE.user){ toast("Sign in to save a private note.", true); return; }
+        var pcol = BE.db.collection("users").doc(BE.user.id).collection("private");
+        var pref = (existing && existing._priv) ? pcol.doc(existing.id) : pcol.doc();
+        pref.set(Object.assign({}, data, {
+          updatedAt: now,
+          createdAt: (existing && existing.createdAt) || now
+        })).then(function(){
+          if (existing && !existing._priv && !existing._local){
+            BE.db.collection("notebook").doc(existing.id).delete().catch(function(){});
+          }
+          closeSheet();
+          toast("Saved privately — only your account can see it.");
+        }).catch(function(err){ toast(dbErrMsg(err), true); });
+        return;
+      }
+
       var arr = localNotes();
       if (wasLocal){
         arr = arr.map(function(x){ return x.id === existing.id ? Object.assign({}, x, data, { updatedAt: now }) : x; });
@@ -2642,14 +3017,25 @@
     }
 
     var db = requireDb(); if (!db) return;
-    var keepShared = existing && !wasLocal;
-    var payload = Object.assign({}, data, {
-      updatedAt: now,
-      createdAt:   (keepShared && existing.createdAt)   || now,
-      authorName:  (keepShared && existing.authorName)  || myName(),
-      authorToken: (keepShared && existing.authorToken) || ME.token
-    });
+    if (!signedIn()){ toast("Sign in to add a note for the class.", true); return; }
+    var keepShared = existing && !wasLocal && !existing._priv;
+    var payload = Object.assign({}, data, { updatedAt: now });
+    if (keepShared){
+      payload.createdAt  = existing.createdAt || now;
+      payload.authorUid  = existing.authorUid;
+      payload.authorName = existing.authorName;
+      if (!payload.authorUid) delete payload.authorUid;
+      if (existing.authorToken) payload.authorToken = existing.authorToken;
+    } else {
+      payload.createdAt = now;
+      Object.assign(payload, authorFields());
+    }
     var ref = keepShared ? db.collection("notebook").doc(existing.id) : db.collection("notebook").doc();
+    /* A note moving out of private leaves its private copy behind. */
+    if (existing && existing._priv && BE.user){
+      BE.db.collection("users").doc(BE.user.id).collection("private").doc(existing.id)
+        .delete().catch(function(){});
+    }
     state.pending["nb:" + ref.id] = Object.assign({ id: ref.id }, payload);
     closeSheet(); renderNotebook();
     ref.set(payload).then(function(){
@@ -2705,7 +3091,7 @@
     Object.keys(r).forEach(function(k){ if (r[k]) n++; });
     return n;
   }
-  function iReacted(post){ return !!(post.reactions && post.reactions[ME.token]); }
+  function iReacted(post){ return !!(post.reactions && post.reactions[meId()]); }
 
   function visiblePosts(){
     var posts = state.posts.slice();
@@ -2749,6 +3135,16 @@
         list.appendChild(sk);
       }
       empty.hidden = true;
+      return;
+    }
+
+    if (usingFirebase() && !BE.user){
+      list.innerHTML = "";
+      empty.hidden = false;
+      empty.innerHTML = svgIcon("i-lock","big") +
+        "<h3>Sign in to use the help board</h3>" +
+        "<p>Posting and answering needs a signed-in account so replies carry a real name.</p>" +
+        '<div class="gate-actions"><button class="btn js-signin">Sign in with Google</button></div>';
       return;
     }
 
@@ -2832,14 +3228,14 @@
     threadBtn.addEventListener("click", function(){ openThread(p.id); });
     actions.appendChild(threadBtn);
 
-    if (p.kind !== "reminder" && (mine(p) || state.adminMode)){
+    if (p.kind !== "reminder" && (mine(p) || canAdmin())){
       var res = document.createElement("button");
       res.type = "button"; res.className = "linkbtn";
       res.textContent = p.resolved ? "Mark unresolved" : "Mark resolved";
       res.addEventListener("click", function(){ patchPost(p.id, { resolved: !p.resolved }); });
       actions.appendChild(res);
     }
-    if (state.adminMode){
+    if (canAdmin()){
       var pin = document.createElement("button");
       pin.type = "button"; pin.className = "linkbtn";
       pin.textContent = p.pinned ? "Unpin" : "Pin";
@@ -2852,7 +3248,7 @@
       lock.addEventListener("click", function(){ patchPost(p.id, { locked: !p.locked }); });
       actions.appendChild(lock);
     }
-    if (mine(p) || state.adminMode){
+    if (mine(p) || canAdmin()){
       var del = document.createElement("button");
       del.type = "button"; del.className = "linkbtn danger";
       del.textContent = "Delete";
@@ -2896,7 +3292,7 @@
       var t = document.createElement("span");
       t.textContent = "· " + fmtAgo(r.createdAt);
       meta.appendChild(t);
-      if (mine(r) || state.adminMode){
+      if (mine(r) || canAdmin()){
         var d = document.createElement("button");
         d.type = "button"; d.className = "linkbtn danger"; d.textContent = "Delete";
         var armed = false;
@@ -2928,7 +3324,8 @@
       function submitReply(){
         var text = ta.value.trim();
         if (!text){ toast("Write a reply first.", true); return; }
-        if (!ME.name){ openNameSheet(function(){ state.replyDraft = ""; postReply(p.id, text); }); return; }
+        if (usingFirebase() && !BE.user){ toast("Sign in to reply.", true); signIn(); return; }
+        if (!usingFirebase() && !ME.name){ openNameSheet(function(){ state.replyDraft = ""; postReply(p.id, text); }); return; }
         state.replyDraft = "";
         ta.value = "";
         postReply(p.id, text);
@@ -2972,7 +3369,7 @@
   function postReply(postId, text){
     var db = requireDb(); if (!db) return;
     db.collection("help").doc(postId).collection("replies").add({
-      body: text, authorName: myName(), authorToken: ME.token, createdAt: new Date().toISOString()
+      body: text, createdAt: new Date().toISOString(), ...authorFields()
     }).then(function(){
       var n = (state.replies[postId] || []).length + 1;
       db.collection("help").doc(postId).update({ replyCount: n }).catch(function(){});
@@ -2982,9 +3379,8 @@
 
   function toggleReact(post){
     var db = requireDb(); if (!db) return;
-    var patch = {};
-    patch[ME.token] = !iReacted(post);
-    db.collection("help").doc(post.id).update({ reactions: patch })
+    if (!signedIn()){ toast("Sign in to react.", true); return; }
+    mergeField(db.collection("help").doc(post.id), "reactions", meId(), !iReacted(post))
       .catch(function(err){ toast(dbErrMsg(err), true); });
   }
 
@@ -2999,19 +3395,19 @@
     var input = document.getElementById("postInput");
     var text = input.value.trim();
     if (!text){ toast("Write your question or reminder first.", true); return; }
-    if (!ME.name){ openNameSheet(function(){ postHelp(); }); return; }
+    if (usingFirebase() && !BE.user){ toast("Sign in to post.", true); signIn(); return; }
+    if (!usingFirebase() && !ME.name){ openNameSheet(function(){ postHelp(); }); return; }
 
     var kind = document.getElementById("postKind").value;
     var payload = {
       kind: kind,
       body: text,
       subject: document.getElementById("postSubject").value,
-      authorName: myName(),
-      authorToken: ME.token,
       createdAt: new Date().toISOString(),
       resolved: false, pinned: false, locked: false,
       replyCount: 0, reactions: {}
     };
+    Object.assign(payload, authorFields());
     var ref = db.collection("help").doc();
     state.pending["hb:" + ref.id] = Object.assign({ id: ref.id }, payload);
     input.value = "";
@@ -3067,6 +3463,19 @@
      7. Admin mode + tabs + wiring
      ========================================================= */
   function applyAdminMode(){
+    if (usingFirebase()){
+      /* Firebase decides admin by account, so the passcode plays no part. */
+      state.adminMode = BE.isAdmin;
+      document.querySelectorAll(".admin-only").forEach(function(el){ el.hidden = !BE.isAdmin; });
+      renderGlobalBanner();
+      renderAnnouncements();
+      renderNotebookIntro();
+      renderNotebook();
+      renderHelp();
+      renderLegend();
+      paintTrustNotes();
+      return;
+    }
     if (!state.adminUnlocked) state.adminMode = false;
     document.getElementById("adminToggleBtn").classList.toggle("is-on", state.adminMode);
     document.getElementById("adminToggleBtn").innerHTML =
@@ -3079,6 +3488,32 @@
     renderNotebook();
     renderHelp();
     renderLegend();
+  }
+
+  /* The honest description of privacy differs per backend, so it is written
+     from whichever one is actually live. */
+  function paintTrustNotes(){
+    var nb = document.getElementById("notebookTrustNote");
+    var hb = document.getElementById("helpTrustNote");
+    if (!nb || !hb) return;
+    if (usingFirebase()){
+      nb.innerHTML =
+        "<strong>Public</strong> notes are visible to everyone signed in. " +
+        "<strong>Link only</strong> notes are kept out of the list by the server, so they open only for someone who has the link. " +
+        "<strong>Private</strong> notes are stored under your account and the security rules stop anyone else reading them — including admins — and they follow you between devices. " +
+        "Names come from your Google account, so posts carry a real one.";
+      hb.innerHTML =
+        "Everyone signed in can post, reply and react. Your name comes from your Google account, and the server only lets you edit or delete your own posts — admins can moderate anything.";
+    } else {
+      nb.innerHTML =
+        "<strong>Public</strong> notes are visible to everyone who can open this Hub. " +
+        "<strong>Link only</strong> notes stay out of the list, but anyone signed in who has the link can open one — that's secrecy, not a lock. " +
+        "<strong>Private</strong> notes never leave this browser: they won't show up on your phone, and no one, admins included, can recover them. " +
+        "This copy can't verify who anyone is, so shared editing runs on class trust.";
+      hb.innerHTML =
+        "Everyone signed in can post, reply, and react here. Names are self-chosen and unverified, so a classmate could in theory edit or remove someone else's post — " +
+        "admins can clean up anything that goes wrong.";
+    }
   }
 
   function checkNoteHash(){
@@ -3106,6 +3541,10 @@
   }
 
   function wire(){
+    document.addEventListener("click", function(e){
+      var t = e.target;
+      if (t && t.closest && t.closest(".js-signin")) signIn();
+    });
     document.getElementById("tabs").addEventListener("click", function(e){
       var btn = e.target.closest("button[data-tab]");
       if (btn) warpTo(btn.getAttribute("data-tab"));
@@ -3182,7 +3621,14 @@
 
     /* --- help board --- */
     document.getElementById("postBtn").addEventListener("click", postHelp);
-    document.getElementById("postAsBtn").addEventListener("click", function(){ openNameSheet(null); });
+    document.getElementById("postAsBtn").addEventListener("click", function(){
+      if (usingFirebase()){
+        toast(BE.user ? "Your name comes from your Google account." : "Sign in to post.");
+        if (!BE.user) signIn();
+        return;
+      }
+      openNameSheet(null);
+    });
     var postInput = document.getElementById("postInput");
     try{
       var draft = localStorage.getItem("3cs_draft_help");
@@ -3780,14 +4226,8 @@
     renderSubjectSelectors();
 
     document.getElementById("postAsBtn").textContent = myName();
-    document.getElementById("notebookTrustNote").innerHTML =
-      "<strong>Public</strong> notes are visible to everyone who can open this Hub. " +
-      "<strong>Link only</strong> notes stay out of the list, but anyone signed in who has the link can open one — that's secrecy, not a lock. " +
-      "<strong>Private</strong> notes never leave this browser: they won't show up on your phone, and no one, admins included, can recover them. " +
-      "The Hub can't verify who anyone is, so shared editing runs on class trust.";
-    document.getElementById("helpTrustNote").innerHTML =
-      "Everyone signed in can post, reply, and react here. Names are self-chosen and unverified, so a classmate could in theory edit or remove someone else's post — " +
-      "admins can clean up anything that goes wrong.";
+    paintAuth();
+    paintTrustNotes();
 
     renderNotebookIntro();
     renderNotebook();

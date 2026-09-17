@@ -1,0 +1,190 @@
+rules_version = '2';
+
+// ============================================================================
+// 3CS Class Hub — Firestore security rules
+//
+// This file is the real security boundary. Everything in index.html is just a
+// user interface: anyone can open devtools and call the database directly, so
+// nothing in the page can be trusted. These rules run on Google's servers and
+// cannot be bypassed.
+//
+// Paste into: Firebase Console -> Firestore Database -> Rules -> Publish.
+// ============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- who is who ----------------------------------------------------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    // The owner is hard-coded so there is always one admin who cannot be
+    // locked out, even if the admins document is deleted.
+    // CHANGE THIS if you sign in with a different account than your Gmail.
+    function isOwner() {
+      return signedIn() && myEmail() == 'joshthefrazer@gmail.com';
+    }
+
+    // Everyone else becomes an admin by being listed in config/admins.
+    function isAdmin() {
+      return isOwner() || (
+        signedIn() &&
+        exists(/databases/$(database)/documents/config/admins) &&
+        myEmail() in get(/databases/$(database)/documents/config/admins).data.emails
+      );
+    }
+
+    // OPTIONAL — restrict the whole Hub to one email domain.
+    // Swap the body for:  return signedIn() && myEmail().matches('.*@yourschool[.]edu[.]bz');
+    // and only school accounts can read anything.
+    function mayUseHub() {
+      return signedIn();
+    }
+
+    function authoredByMe() {
+      return request.auth.uid == request.resource.data.authorUid;
+    }
+
+    function existingIsMine() {
+      return request.auth.uid == resource.data.authorUid;
+    }
+
+    // Stops someone editing a post and quietly reassigning it to themselves,
+    // or backdating it.
+    function keepsAuthor() {
+      return request.resource.data.authorUid == resource.data.authorUid
+          && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    // ---- site configuration ---------------------------------------------
+    // The banner, the notebook intro and the subject key. Everyone reads it;
+    // only admins change it.
+
+    match /config/site {
+      allow read:  if mayUseHub();
+      allow write: if isAdmin();
+    }
+
+    // Who is an admin. Readable so the page can grey out controls it knows
+    // will fail; only the owner can hand out admin rights.
+    match /config/admins {
+      allow read:  if mayUseHub();
+      allow write: if isOwner();
+    }
+
+    // ---- announcements ---------------------------------------------------
+    // The official feed. Admin-only by design: this is the teacher's voice.
+
+    match /announcements/{id} {
+      allow read:  if mayUseHub();
+      allow write: if isAdmin();
+    }
+
+    // ---- class notebook --------------------------------------------------
+
+    match /notebook/{noteId} {
+
+      // Opening one note by its id is allowed for anything shared. This is
+      // what makes "link only" work: you can open it if you know the id.
+      allow get: if mayUseHub();
+
+      // Listing is the important half. A query only succeeds if the server
+      // can prove every result is public, so link-only notes genuinely cannot
+      // be discovered by browsing — the secrecy is enforced, not cosmetic.
+      // The page's own author query is allowed too, so you can find your own.
+      allow list: if mayUseHub() && (
+                    resource.data.visibility == 'public' || existingIsMine()
+                  );
+
+      allow create: if mayUseHub()
+                    && authoredByMe()
+                    && request.resource.data.visibility in ['public', 'link']
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() <= 200
+                    && request.resource.data.body is string
+                    && request.resource.data.body.size() <= 100000;
+
+      // Anyone signed in may tick a checkbox on a public note — that is the
+      // point of a shared checklist — but only the author or an admin may
+      // rewrite or retitle one.
+      allow update: if mayUseHub() && (
+                      isAdmin() ||
+                      (existingIsMine() && keepsAuthor()) ||
+                      (resource.data.visibility == 'public'
+                        && keepsAuthor()
+                        && request.resource.data.title == resource.data.title
+                        && request.resource.data.visibility == resource.data.visibility)
+                    );
+
+      allow delete: if isAdmin() || existingIsMine();
+    }
+
+    // ---- private notes ---------------------------------------------------
+    // Under your own uid. No one else can read these — not classmates, not
+    // admins, not the owner. This is what makes "private" mean something.
+
+    match /users/{uid}/private/{noteId} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // ---- help board ------------------------------------------------------
+
+    match /help/{postId} {
+      allow read: if mayUseHub();
+
+      allow create: if mayUseHub()
+                    && authoredByMe()
+                    && request.resource.data.kind in ['question', 'reminder']
+                    && request.resource.data.body is string
+                    && request.resource.data.body.size() <= 5000
+                    && request.resource.data.resolved == false
+                    && request.resource.data.pinned == false
+                    && request.resource.data.locked == false;
+
+      // Reactions and the reply counter are open to everyone signed in;
+      // pinning and locking are moderation, so admins only; the text and
+      // resolved flag belong to the author.
+      allow update: if mayUseHub() && keepsAuthor() && (
+                      isAdmin()
+                      || existingIsMine()
+                      || request.resource.data.diff(resource.data)
+                           .affectedKeys()
+                           .hasOnly(['reactions', 'replyCount'])
+                    ) && (
+                      isAdmin()
+                      || (request.resource.data.pinned == resource.data.pinned
+                          && request.resource.data.locked == resource.data.locked)
+                    );
+
+      allow delete: if isAdmin() || existingIsMine();
+
+      match /replies/{replyId} {
+        allow read: if mayUseHub();
+
+        // A locked thread refuses new replies at the server, so locking is
+        // real rather than a hidden button.
+        allow create: if mayUseHub()
+                      && authoredByMe()
+                      && request.resource.data.body is string
+                      && request.resource.data.body.size() <= 5000
+                      && get(/databases/$(database)/documents/help/$(postId)).data.locked == false;
+
+        allow update: if false;
+        allow delete: if isAdmin() || existingIsMine();
+      }
+    }
+
+    // ---- everything else -------------------------------------------------
+    // Default deny. Any path not named above is closed.
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
