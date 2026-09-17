@@ -1,0 +1,87 @@
+/* ---------- toast ---------- */
+  #toast{
+    position:fixed; left:50%; bottom:calc(26px + env(safe-area-inset-bottom,0px));
+    transform:translateX(-50%) translateY(16px) scale(.96);
+    background:linear-gradient(170deg, #141b2e, #0a0e1a);
+    border:1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    color:var(--ink); padding:12px 22px; border-radius:999px; font-size:.84rem;
+    box-shadow:0 20px 50px -20px color-mix(in srgb, var(--accent) 70%, black);
+    opacity:0; pointer-events:none; z-index:80; max-width:min(90vw,460px); text-align:center;
+    transition:opacity .3s var(--ease), transform .4s var(--ease-out);
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
+  #toast.err{ border-color:color-mix(in srgb, var(--urgent) 60%, transparent); color:#ffd9dc; }
+
+  /* ---------- warp flash ---------- */
+  #warpFlash{
+    position:fixed; inset:0; z-index:35; pointer-events:none; opacity:0;
+    background:radial-gradient(circle at 50% 62%,
+      color-mix(in srgb, var(--accent) 26%, transparent), transparent 58%);
+  }
+  body.warping #warpFlash{ animation:warpPulse .75s var(--ease-out); }
+  @keyframes warpPulse{ 0%{ opacity:0; } 32%{ opacity:1; } 100%{ opacity:0; } }
+  body.warping main{ animation:warpContent .75s var(--ease-out); }
+  @keyframes warpContent{
+    0%{ opacity:1; transform:none; filter:none; }
+    34%{ opacity:0; transform:translateY(-26px) scale(.97); filter:blur(9px); }
+    35%{ opacity:0; transform:translateY(26px) scale(1.02); }
+    100%{ opacity:1; transform:none; filter:none; }
+  }
+
+  /* ---------- keyboard hint ---------- */
+  .kbd-hint{
+    position:fixed; right:18px; bottom:calc(18px + env(safe-area-inset-bottom,0px)); z-index:25;
+    font-family:"IBM Plex Mono",monospace; font-size:.63rem; color:var(--muted);
+    background:rgba(8,11,22,.75); border:1px solid var(--edge-soft); border-radius:999px;
+    padding:6px 13px; backdrop-filter:blur(8px); pointer-events:none;
+    opacity:0; transition:opacity .5s var(--ease);
+  }
+  .kbd-hint.show{ opacity:.85; }
+  .kbd-hint b{ color:var(--ink-dim); font-weight:600; }
+  @media (max-width:760px){ .kbd-hint{ display:none; } }
+
+
+  /* ---------- custom icon system (no emoji anywhere) ---------- */
+  svg.ic{
+    width:1.05em; height:1.05em; display:inline-block; vertical-align:-.16em; flex:none;
+    fill:none; stroke:currentColor; stroke-width:1.7;
+    stroke-linecap:round; stroke-linejoin:round;
+  }
+  svg.ic.big{ width:34px; height:34px; display:block; margin:0 auto 14px; stroke-width:1.5; color:var(--accent); }
+  svg.emblem{
+    width:100%; height:100%; display:block;
+    fill:none; stroke:currentColor; stroke-width:1.6;
+    stroke-linecap:round; stroke-linejoin:round;
+  }
+  .brand .mark svg.ic{ width:21px; height:21px; color:#eef5ff; }
+  .search svg.ic{ color:var(--muted); transition:color .22s var(--ease); }
+  .search:focus-within svg.ic{ color:var(--accent); }
+  .trust svg.ic{ color:var(--accent); width:17px; height:17px; margin-top:2px; }
+  .cal-nav button{ display:inline-flex; align-items:center; justify-content:center; }
+  .cal-nav button svg.ic{ width:17px; height:17px; }
+  .sheet-close svg.ic, .admin-sheet .close svg.ic{ width:18px; height:18px; }
+  .admin-sheet h3 svg.ic{ color:var(--accent); }
+  .meta-flag{ display:inline-flex; align-items:center; gap:5px; }
+  .meta-flag.hot{ color:var(--accent); }
+  .announce-meta .pin{ display:inline-flex; align-items:center; gap:5px; }
+  .react-btn svg.ic{ width:15px; height:15px; }
+  .linkbtn svg.ic{ width:14px; height:14px; margin-right:1px; }
+
+  /* emblem motion — each object behaves like the thing it is */
+  .emblem .sp{ transform-origin:24px 24px; animation:spinSlow 30s linear infinite; }
+  .emblem .hand{ transform-origin:24px 24px; animation:spinSlow 11s linear infinite; }
+  @keyframes spinSlow{ to{ transform:rotate(360deg); } }
+  .emblem .w1{ animation:wavePulse 2.8s var(--ease) infinite; }
+  .emblem .w2{ animation:wavePulse 2.8s .5s var(--ease) infinite; }
+  @keyframes wavePulse{ 0%,100%{ opacity:.22; } 45%{ opacity:1; } }
+  .emblem .pulse{ transform-origin:24px 33.2px; animation:dotPulse 3.6s var(--ease) infinite; }
+  @keyframes dotPulse{ 0%,100%{ opacity:.4; transform:scale(.7); } 50%{ opacity:1; transform:scale(1); } }
+  @keyframes bob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-6px); } }
+
+  .hero-emblem{
+    width:58px; height:58px; margin:0 auto 16px; color:var(--accent);
+    filter:drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 55%, transparent));
+    animation:fadeUp .7s var(--ease-out) both, bob 7s 1s ease-in-out infinite;
+  }
+  .hero.compact .hero-emblem{ width:46px; height:46px; margin-bottom:12px; }
+  @media (prefers-reduced-motion: reduce){ .hero-emblem, .ep-orb{ animation:none !important; } }

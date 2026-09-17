@@ -1,0 +1,9 @@
+/* ---------- responsive ---------- */
+  @media (max-width:560px){
+    .brand h1{ font-size:1.02rem; }
+    .card{ padding:18px; }
+    .cal-cell{ min-height:66px; font-size:.62rem; padding:5px 6px; }
+    .cal-grid{ gap:4px; }
+    .now-strip{ gap:10px; }
+    .hero-word{ letter-spacing:.03em; }
+  }

@@ -1,0 +1,35 @@
+/* ---------- announcements ---------- */
+  .announce-item{
+    border:1px solid var(--edge-soft); border-radius:14px; padding:15px 17px;
+    background:rgba(255,255,255,.035);
+    display:flex; flex-direction:column; gap:7px;
+    transition:border-color .25s var(--ease), transform .25s var(--ease);
+    animation:rise .45s var(--ease-out) both;
+  }
+  .announce-item:hover{ transform:translateY(-2px); border-color:var(--edge); }
+  .announce-item.pinned{
+    border-color:color-mix(in srgb, var(--accent) 45%, transparent);
+    background:color-mix(in srgb, var(--accent) 7%, rgba(255,255,255,.03));
+  }
+  .announce-meta{
+    font-family:"IBM Plex Mono",monospace; font-size:.66rem; color:var(--muted);
+    display:flex; gap:11px; align-items:center;
+  }
+  .announce-meta .pin{ color:var(--accent); font-weight:600; }
+  .announce-text{ white-space:pre-wrap; color:var(--ink-dim); }
+  .announce-del{
+    align-self:flex-end; background:none; border:none; color:var(--urgent); font-size:.73rem;
+    cursor:pointer; text-decoration:underline; padding:0;
+  }
+  .composer{ display:flex; flex-direction:column; gap:11px; margin-top:12px; }
+  .composer textarea, .composer input{
+    width:100%; border:1px solid var(--edge); border-radius:13px; padding:11px 14px;
+    font-family:inherit; font-size:.9rem; background:rgba(0,0,0,.32); color:var(--ink);
+    resize:vertical; outline:none; transition:border-color .22s var(--ease), box-shadow .22s var(--ease);
+  }
+  .composer textarea{ min-height:76px; }
+  .composer textarea:focus, .composer input:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  .composer textarea::placeholder, .composer input::placeholder{ color:var(--muted); }
