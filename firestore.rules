@@ -133,6 +133,43 @@ service cloud.firestore {
       allow read, write: if signedIn() && request.auth.uid == uid;
     }
 
+    // ---- what YOU have finished ------------------------------------------
+    // One document per assignment you've ticked off, under your own uid.
+    // Nobody else can read it, so the class can share a list of work without
+    // anyone being able to see who is behind on it.
+
+    match /users/{uid}/done/{assignmentId} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // ---- assignments -----------------------------------------------------
+    // The work itself is the class's: everyone reads it, anyone signed in can
+    // add one, and only the person who posted it (or an admin) can change it.
+    // Nothing about anyone's submission state lives here.
+
+    match /assignments/{id} {
+      allow read: if mayUseHub();
+
+      allow create: if mayUseHub()
+                    && authoredByMe()
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.title.size() <= 300
+                    && request.resource.data.detail is string
+                    && request.resource.data.detail.size() <= 5000
+                    && request.resource.data.due is string
+                    && request.resource.data.due.size() <= 20
+                    && request.resource.data.source in ['manual', 'classroom'];
+
+      allow update: if mayUseHub()
+                    && keepsAuthor()
+                    && (isAdmin() || existingIsMine())
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() <= 300;
+
+      allow delete: if isAdmin() || existingIsMine();
+    }
+
     // ---- help board ------------------------------------------------------
 
     match /help/{postId} {

@@ -1,5 +1,5 @@
 import { saveConfig } from "./backend.js";
-import { BELL, BELL_NOTE, DEFAULT_LEGEND, SCHED, SESSIONS, dayMode } from "./data.js";
+import { liveBell, liveBellNote, liveLegend, liveSched, liveSessions, liveDayMode } from "./live.js";
 import { renderFilterChips } from "./help.js";
 import { todayInfo } from "./orbit.js";
 import { state } from "./state.js";
@@ -26,13 +26,13 @@ function dayNumberFromLabel(label){
 function renderScheduleTable(highlightDay){
   var table = document.getElementById("schedTable");
   var html = "<thead><tr><th>Day</th>";
-  SESSIONS.forEach(function(s){
+  liveSessions().forEach(function(s){
     html += '<th class="'+(s.n===highlightDay?"":"")+'">S'+s.n+'<br>'+s.time+'</th>';
   });
   html += "</tr></thead><tbody>";
   for (var day=1; day<=7; day++){
     html += "<tr><td class=\"daycol"+(day===highlightDay?" today":"")+"\">Day "+day+"</td>";
-    SCHED[day].forEach(function(s){
+    liveSched()[day].forEach(function(s){
       html += '<td class="'+(day===highlightDay?"today":"")+'"><div class="code">'+s.c+'</div><div class="rt">'+s.r+' · '+s.t+'</div></td>';
     });
     html += "</tr>";
@@ -44,7 +44,7 @@ function renderScheduleTable(highlightDay){
      today isn't running it, so nobody reads the wrong clock off this grid. */
   var note = document.getElementById("rotationNote");
   if (note){
-    var ti = todayInfo(), m = dayMode(ti.info);
+    var ti = todayInfo(), m = liveDayMode(ti.info);
     note.textContent = (ti.dayNum && m.key !== "regular")
       ? "Times in this grid are the regular bell schedule. Today is a " +
         m.name.toLowerCase() + " — check Today's line-up above for the real times."
@@ -54,14 +54,14 @@ function renderScheduleTable(highlightDay){
 
 function renderBell(){
   var wrap = document.getElementById("bellSchedules");
-  var active = dayMode(todayInfo().info).key;
+  var active = liveDayMode(todayInfo().info).key;
   var modeOf = { 0:"regular", 1:"quick", 2:"half" };
   wrap.innerHTML = "";
-  Object.keys(BELL).forEach(function(name, idx){
+  Object.keys(liveBell()).forEach(function(name, idx){
     var isToday = modeOf[idx] === active && !!todayInfo().dayNum;
     var col = document.createElement("div");
     col.className = "bell-col" + (isToday ? " today" : "");
-    var rows = BELL[name].map(function(r){
+    var rows = liveBell()[name].map(function(r){
       return '<div class="bell-row"><span>' + esc(r[0]) + '</span><span>' + esc(r[1]) + '</span></div>';
     }).join("");
     col.innerHTML = '<div class="bell-head"><span>' + esc(name) + '</span>' +
@@ -71,12 +71,12 @@ function renderBell(){
   var note = document.createElement("p");
   note.className = "hint";
   note.style.flexBasis = "100%";
-  note.textContent = BELL_NOTE;
+  note.textContent = liveBellNote();
   wrap.appendChild(note);
 }
 
 function renderLegend(){
-  var legend = Object.assign({}, DEFAULT_LEGEND, state.legend || {});
+  var legend = liveLegend();
   var grid = document.getElementById("legendGrid");
   grid.innerHTML = "";
   Object.keys(legend).sort().forEach(function(code){
@@ -102,11 +102,11 @@ function saveLegend(){
 
 /* Subject codes drive the notebook + help board tags as well as the legend. */
 function subjectCodes(){
-  return Object.keys(Object.assign({}, DEFAULT_LEGEND, state.legend || {})).sort();
+  return Object.keys(liveLegend()).sort();
 }
 function subjectLabel(code){
   if (!code || code === "general") return "General";
-  var legend = Object.assign({}, DEFAULT_LEGEND, state.legend || {});
+  var legend = liveLegend();
   return legend[code] ? code + " — " + legend[code] : code;
 }
 function renderSubjectSelectors(){

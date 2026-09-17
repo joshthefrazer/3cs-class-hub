@@ -3,7 +3,10 @@ import { renderAnnouncements, renderGlobalBanner } from "./ann.js";
 import { renderHelp } from "./help.js";
 import { renderNotebook, renderNotebookIntro } from "./notebook.js";
 import { renderLegend, renderSubjectSelectors } from "./sched.js";
+import { renderWork, renderWorkFilters, paintWorkChip, loadLocalDone } from "./work.js";
 import { state } from "./state.js";
+import { bumpLive } from "./live.js";
+import { renderLiveConfig } from "./orbit.js";
 
 /* =========================================================
    BACKEND — one data layer, two drivers.
@@ -337,11 +340,42 @@ function startStreams(){
       state.globalBanner = data.globalBanner || null;
       state.notebookNote = typeof data.notebookNote === "string" ? data.notebookNote : null;
       state.legend = data.legend || null;
+      // Invalidate the live overlay only once every field it reads is in place.
+      bumpLive();
       renderGlobalBanner();
       renderNotebookIntro();
       renderLegend();
       renderSubjectSelectors();
+      // An admin may have just rewritten the timetable, the calendar or the
+      // bell times, so everything derived from them is repainted too.
+      renderLiveConfig();
     }, function(){ /* terminal: keep last-known content on screen */ }));
+
+  /* The class's work. Small collection, always worth having in full. */
+  streams.push(db.collection("assignments").orderBy("due","asc").limit(200).onSnapshot(function(qs){
+      var items = [];
+      qs.docs.forEach(function(d){ items.push(Object.assign({id:d.id}, d.data())); });
+      state.assignments = items;
+      state.workLoaded = true;
+      renderWorkFilters();
+      renderWork();
+      paintWorkChip();
+    }, function(){
+      /* An ordered query needs an index the first time. Fall back to an
+         unordered read so the list still appears while that is created. */
+      streams.push(db.collection("assignments").limit(200).onSnapshot(function(qs){
+        var items = [];
+        qs.docs.forEach(function(d){ items.push(Object.assign({id:d.id}, d.data())); });
+        state.assignments = items;
+        state.workLoaded = true;
+        renderWorkFilters();
+        renderWork();
+        paintWorkChip();
+      }, function(){
+        state.workLoaded = true;
+        renderWork();
+      }));
+    }));
 
   streams.push(db.collection("announcements").orderBy("createdAt","desc").limit(50).onSnapshot(function(qs){
       var items = [];
@@ -398,6 +432,21 @@ function startStreams(){
         state.privNotes = items;
         renderNotebook();
       }, function(){}));
+
+    /* Which assignments YOU have finished. Under your own uid, so the rules
+       make it unreadable to everyone else - the class sees the work, never
+       who is behind on it. */
+    streams.push(db.collection("users").doc(BE.user.id).collection("done")
+      .limit(500)
+      .onSnapshot(function(qs){
+        var map = {};
+        qs.docs.forEach(function(d){ map[d.id] = true; });
+        state.workDone = map;
+        renderWork();
+        paintWorkChip();
+      }, function(){}));
+  } else {
+    loadLocalDone();
   }
 
   streams.push(db.collection("help").orderBy("createdAt","desc").limit(200).onSnapshot(function(qs){

@@ -8,6 +8,10 @@ import { REDUCED, Sky, WORLD, renderHero, updateEdgePlanets, warpTo } from "./or
 import { renderLegend, saveLegend } from "./sched.js";
 import { ADMIN_HASH, hashPass, paintAdminSheet, setAdminUnlocked, state } from "./state.js";
 import { openNameSheet, svgIcon } from "./text.js";
+import { openSiteEditor } from "./adminpanel.js";
+import { replayReveal } from "./fx.js";
+import { openWorkSheet, closeWorkSheet, saveWork, deleteWork, renderWork, renderWorkFilters } from "./work.js";
+import { syncClassroom, classroomLabel } from "./classroom.js";
 
 /* =========================================================
    7. Admin mode + tabs + wiring
@@ -84,9 +88,11 @@ function setTab(name){
   });
   document.body.setAttribute("data-world", name);
   document.body.classList.toggle("compact-world", name !== "schedule");
+  if (name === "work"){ renderWorkFilters(); renderWork(); }
   if (WORLD[name]) Sky.tint(WORLD[name].a);
   updateEdgePlanets(name);
   renderHero(name);
+  replayReveal();
   try{ sessionStorage.setItem("3cs_tab", name); }catch(e){}
 }
 
@@ -108,6 +114,39 @@ function wire(){
     var card = document.getElementById("lineupCard");
     if (card) card.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block:"start" });
   });
+
+  var syncW = document.getElementById("workSyncBtn");
+  if (syncW){
+    var lab = document.getElementById("workSyncLabel");
+    if (lab) lab.textContent = classroomLabel();
+    syncW.addEventListener("click", syncClassroom);
+  }
+
+  var addW = document.getElementById("workAddBtn");
+  if (addW) addW.addEventListener("click", function(){ openWorkSheet(null); });
+  var closeW = document.getElementById("workSheetClose");
+  if (closeW) closeW.addEventListener("click", closeWorkSheet);
+  var saveW = document.getElementById("workSaveBtn");
+  if (saveW) saveW.addEventListener("click", saveWork);
+  var delW = document.getElementById("workDeleteBtn");
+  if (delW) delW.addEventListener("click", deleteWork);
+  var hideW = document.getElementById("workHideDone");
+  if (hideW) hideW.addEventListener("change", function(e){
+    state.workHideDone = e.target.checked;
+    try{ localStorage.setItem("3cs_hide_done", state.workHideDone ? "1" : "0"); }catch(err){}
+    renderWork();
+  });
+  try{
+    if (localStorage.getItem("3cs_hide_done") === "0"){
+      state.workHideDone = false;
+      if (hideW) hideW.checked = false;
+    }
+  }catch(e){}
+  var wSheet = document.getElementById("workSheet");
+  if (wSheet) wSheet.addEventListener("click", function(e){ if (e.target === wSheet) closeWorkSheet(); });
+
+  var seBtn = document.getElementById("siteEditorBtn");
+  if (seBtn) seBtn.addEventListener("click", function(){ openSiteEditor(); });
 
   var sheet = document.getElementById("adminSheet");
   document.getElementById("adminToggleBtn").addEventListener("click", function(){

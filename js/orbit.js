@@ -2,25 +2,32 @@ import { applyAdminMode, paintTrustNotes, setTab, wire } from "./admin.js";
 import { renderGlobalBanner } from "./ann.js";
 import { initDb, myName, paintAuth } from "./backend.js";
 import { calCursor, renderCalendar, renderCalendarDow } from "./cal.js";
-import { BELL_MODES, CAL, MONTHS, MONTH_NAMES, SCHED, dayMode } from "./data.js";
+import { MONTHS, MONTH_NAMES } from "./data.js";
+import { liveCal, liveModes, liveSched, liveDayMode } from "./live.js";
 import { renderHelp } from "./help.js";
 import { renderNotebook, renderNotebookIntro } from "./notebook.js";
 import { dayNumberFromLabel, renderBell, renderLegend, renderScheduleTable, renderSubjectSelectors, todayISO } from "./sched.js";
 import { state } from "./state.js";
+import { renderWork, renderWorkFilters, workSummary } from "./work.js";
+import { initPalette, setNavigator, paletteOpen } from "./palette.js";
+import { initFx, replayReveal } from "./fx.js";
 import { esc, svgIcon } from "./text.js";
 
 /* =========================================================
    9. Orbit — starfield, worlds, warp navigation, live "now"
    ========================================================= */
-var TABS = ["schedule","notebook","help","calendar","announcements"];
+var TABS = ["schedule","work","notebook","help","calendar","announcements"];
 var WORLD = {
   schedule:      { label:"Schedule",      g1:"#2f95d8", g2:"#0a3a66", a:"#2ee6c8" },
+  work:          { label:"Work",          g1:"#3fb96b", g2:"#0f3d22", a:"#5ce08c" },
   notebook:      { label:"Notebook",      g1:"#d79a48", g2:"#5c3a11", a:"#f5c46a" },
   help:          { label:"Help Board",    g1:"#d95f3c", g2:"#63220f", a:"#ff8a6b" },
   calendar:      { label:"Calendar",      g1:"#6c5ce0", g2:"#2a2470", a:"#9d8cff" },
   announcements: { label:"Announcements", g1:"#d0629b", g2:"#5e1f45", a:"#ff9ec4" }
 };
 var HERO = {
+  work:          { eyebrow:"What's actually due", word:"WORK",
+    sub:"Every assignment the class has been set, soonest first. Ticking one off is private to you." },
   notebook:      { eyebrow:"Shared by the class", word:"NOTEBOOK",
     sub:"Everything 3CS is working from — notes, resources, revision checklists. Anyone in the class can add a page." },
   help:          { eyebrow:"Ask · answer · remind", word:"HELP",
@@ -36,6 +43,7 @@ try{ REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches; }c
 var Sky = (function(){
   var cv, ctx, W = 0, H = 0, cx = 0, cy = 0, dpr = 1;
   var stars = [], shooters = [], warp = 0, warpTarget = 0, last = 0, tint = "#2ee6c8";
+  var pullX = 0, pullY = 0, pullTX = 0, pullTY = 0;   // cursor lean, eased
   var nextShooter = 4000;
 
   function mk(z){
@@ -66,6 +74,8 @@ var Sky = (function(){
     last = now;
 
     warp += (warpTarget - warp) * Math.min(1, dt * 7);
+    pullX += (pullTX - pullX) * Math.min(1, dt * 2.6);
+    pullY += (pullTY - pullY) * Math.min(1, dt * 2.6);
     ctx.clearRect(0, 0, W, H);
 
     var speed = (REDUCED ? 0 : 0.016) + warp * 0.9;
@@ -77,8 +87,10 @@ var Sky = (function(){
       s.z -= speed * dt;
       if (s.z <= 0.03){ stars[i] = mk(1); continue; }
 
-      var sx = cx + (s.x / s.z) * hw;
-      var sy = cy + (s.y / s.z) * hh;
+      /* Nearer stars lean further, which is what makes it read as depth. */
+      var lean = (1 - s.z) * 26;
+      var sx = cx + (s.x / s.z) * hw - pullX * lean;
+      var sy = cy + (s.y / s.z) * hh - pullY * lean;
       if (sx < -60 || sx > W + 60 || sy < -60 || sy > H + 60){ stars[i] = mk(1); continue; }
 
       var size = (1 - s.z) * 1.9 + 0.3;
@@ -145,6 +157,7 @@ var Sky = (function(){
       requestAnimationFrame(frame);
     },
     warp: function(v){ warpTarget = v; },
+    pull: function(x, y){ pullTX = x; pullTY = y; },
     tint: function(c){ tint = c; }
   };
 })();
@@ -185,11 +198,15 @@ function setHeroWord(text){
 
 function todayInfo(){
   var iso = todayISO();
-  var info = CAL[iso] || null;
+  var info = liveCal()[iso] || null;
   return { iso: iso, info: info, dayNum: info ? dayNumberFromLabel(info.day) : null };
 }
 
 function renderHero(tab){
+  /* Callers that just want a repaint (a config change, a calendar edit) pass
+     nothing; without this the hero would collapse to its compact form as if
+     the viewer had left the schedule. */
+  tab = tab || state.tab || "schedule";
   var hero = document.getElementById("hero");
   var eyebrow = document.getElementById("heroEyebrow");
   var sub = document.getElementById("heroSub");
@@ -247,7 +264,7 @@ function parseClock(t){
 }
 /* Session slots for a given bell mode, not the generic weekly header times. */
 function sessionRanges(mode){
-  mode = mode || BELL_MODES.regular;
+  mode = mode || liveModes().regular;
   return mode.sessions.map(function(p, i){
     return { n: i + 1, start: parseClock(p[0]), end: parseClock(p[1]),
              time: p[0] + "–" + p[1], from: p[0], to: p[1] };
@@ -270,9 +287,9 @@ function fmtLeft(mins){
    students both plan around. */
 function nextHalfDay(){
   var today = todayISO(), best = null;
-  Object.keys(CAL).forEach(function(k){
+  Object.keys(liveCal()).forEach(function(k){
     if (k <= today) return;
-    if (dayMode(CAL[k]) !== BELL_MODES.half) return;
+    if (liveDayMode(liveCal()[k]) !== liveModes().half) return;
     if (!best || k < best) best = k;
   });
   if (!best) return null;
@@ -281,15 +298,15 @@ function nextHalfDay(){
   return {
     days: days, iso: best,
     when: d.toLocaleDateString(undefined, { weekday:"short", month:"short", day:"numeric" }),
-    day: CAL[best].day || ""
+    day: liveCal()[best].day || ""
   };
 }
 /* The next date that actually has classes — for the "pack your bag" card. */
 function nextSchoolDay(){
   var today = todayISO(), best = null;
-  Object.keys(CAL).forEach(function(k){
+  Object.keys(liveCal()).forEach(function(k){
     if (k <= today) return;
-    var info = CAL[k];
+    var info = liveCal()[k];
     if (!dayNumberFromLabel(info.day)) return;
     if (info.kind === "holiday" || info.kind === "async") return;
     if (!best || k < best) best = k;
@@ -298,20 +315,20 @@ function nextSchoolDay(){
   var d = new Date(best + "T00:00:00");
   var days = Math.round((Date.parse(best + "T00:00:00") - Date.parse(today + "T00:00:00")) / 86400000);
   return {
-    iso: best, info: CAL[best], dayNum: dayNumberFromLabel(CAL[best].day),
+    iso: best, info: liveCal()[best], dayNum: dayNumberFromLabel(liveCal()[best].day),
     label: days === 1 ? "Tomorrow" : d.toLocaleDateString(undefined, { weekday:"long" }),
     when: d.toLocaleDateString(undefined, { weekday:"long", month:"long", day:"numeric" })
   };
 }
 function nextBreak(){
   var today = todayISO(), best = null;
-  Object.keys(CAL).forEach(function(k){
-    if (k <= today || CAL[k].kind !== "holiday") return;
+  Object.keys(liveCal()).forEach(function(k){
+    if (k <= today || liveCal()[k].kind !== "holiday") return;
     if (!best || k < best) best = k;
   });
   if (!best) return null;
   var days = Math.round((Date.parse(best + "T00:00:00") - Date.parse(today + "T00:00:00")) / 86400000);
-  return { days: days, name: (CAL[best].events && CAL[best].events[0]) || "Holiday" };
+  return { days: days, name: (liveCal()[best].events && liveCal()[best].events[0]) || "Holiday" };
 }
 function chipEl(label, value, meta, ring){
   var el = document.createElement("div");
@@ -342,7 +359,7 @@ function renderNowStrip(){
   strip.innerHTML = "";
 
   var ti = todayInfo();
-  var mode = dayMode(ti.info);
+  var mode = liveDayMode(ti.info);
   var cur = minsNow();
 
   /* Say loudly when today is NOT the normal bell schedule. */
@@ -363,7 +380,7 @@ function renderNowStrip(){
       if (cur >= r.start && cur < r.end){ lesson = r; idx = i; }
       if (upcoming === null && r.start > cur){ upcoming = r; uidx = i; }
     });
-    var row = SCHED[ti.dayNum];
+    var row = liveSched()[ti.dayNum];
     state.nowKey = mode.key + ":" + idx;
 
     if (lesson){
@@ -391,6 +408,24 @@ function renderNowStrip(){
     }
   }
 
+  /* What's actually due comes before what's coming up on the calendar, and
+     only when there is something outstanding - an empty "0 due" chip is
+     noise. The count is yours: work you have ticked off is not in it. */
+  var w = workSummary();
+  if (w.total){
+    var kick = w.overdue ? "Overdue" : w.today ? "Due today" : "Coming up";
+    var big  = w.overdue || w.today || w.soon;
+    var chipW = chipEl(kick, big + (big === 1 ? " thing" : " things"),
+      w.overdue ? (w.today ? w.today + " also due today" : "not handed in yet")
+                : w.today ? "before the day is out" : "in the next week");
+    chipW.classList.add("work-chip");
+    if (w.overdue) chipW.classList.add("bad");
+    else if (w.today) chipW.classList.add("hot");
+    chipW.style.cursor = "pointer";
+    chipW.addEventListener("click", function(){ warpTo("work"); });
+    strip.appendChild(chipW);
+  }
+
   var hd = nextHalfDay();
   if (hd) strip.appendChild(chipEl("Next half day",
     hd.days === 0 ? "Today" : hd.days + (hd.days === 1 ? " day" : " days"),
@@ -406,7 +441,7 @@ function tickNow(){
   if (document.hidden || state.tab !== "schedule") return;
   var ti = todayInfo();
   if (!ti.dayNum) return;
-  var mode = dayMode(ti.info), cur = minsNow();
+  var mode = liveDayMode(ti.info), cur = minsNow();
   var ranges = sessionRanges(mode), lesson = null, idx = -1;
   ranges.forEach(function(r, i){ if (cur >= r.start && cur < r.end){ lesson = r; idx = i; } });
 
@@ -430,11 +465,11 @@ function renderNextDay(){
   if (!nd){ card.hidden = true; return; }
   card.hidden = false;
   document.getElementById("nextDayWhen").textContent = nd.label + " · " + nd.when;
-  var m = dayMode(nd.info);
+  var m = liveDayMode(nd.info);
   document.getElementById("nextDayMode").textContent =
     nd.info.day + (m.key === "regular" ? "" : " · " + m.name);
   wrap.innerHTML = "";
-  SCHED[nd.dayNum].slice(0, m.sessions.length).forEach(function(c, i){
+  liveSched()[nd.dayNum].slice(0, m.sessions.length).forEach(function(c, i){
     var s = document.createElement("div");
     s.className = "nd-slot";
     s.innerHTML = '<span class="nd-n">S' + (i + 1) + '</span><span class="nd-c"></span>' +
@@ -453,9 +488,9 @@ function renderLineup(){
   if (!ti.dayNum){ card.hidden = true; return; }
   card.hidden = false;
 
-  var mode = dayMode(ti.info);
+  var mode = liveDayMode(ti.info);
   var cur = minsNow();
-  var ranges = sessionRanges(mode), row = SCHED[ti.dayNum];
+  var ranges = sessionRanges(mode), row = liveSched()[ti.dayNum];
 
   document.getElementById("lineupTitle").textContent =
     mode.sessions.length + (mode.sessions.length === 1 ? " session" : " sessions");
@@ -544,6 +579,7 @@ function initParallax(){
 /* ---------- keyboard ---------- */
 function initKeyboard(){
   document.addEventListener("keydown", function(e){
+    if (paletteOpen()) return;
     var t = e.target;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT")) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -556,6 +592,10 @@ function initKeyboard(){
       if (s) s.focus();
     }
   });
+  initFx();
+  initPalette();
+  setNavigator(function(tab){ warpTo(tab); });
+
   var hint = document.getElementById("kbdHint");
   if (hint){
     setTimeout(function(){ hint.classList.add("show"); }, 2200);
@@ -611,4 +651,20 @@ function boot(){
 }
 
 
-export { HERO, REDUCED, Sky, TABS, WORLD, boot, chipEl, fmtLeft, initKeyboard, initParallax, initSpotlight, minsNow, nextBreak, nextHalfDay, nextSchoolDay, parseClock, renderHero, renderLineup, renderNextDay, renderNowStrip, sessionRanges, setHeroWord, tickNow, todayInfo, updateEdgePlanets, warpBusy, warpTo };
+
+/* Repaint everything that is derived from the live config. Called when an
+   admin edit lands, so a timetable change shows up without a reload. */
+function renderLiveConfig(){
+  try{
+    renderScheduleTable();
+    renderBell();
+    renderCalendarDow();
+    renderCalendar();
+    renderHero();
+    renderNowStrip();
+    renderLineup();
+    renderNextDay();
+  }catch(e){ /* a half-built DOM during boot is not worth breaking the stream for */ }
+}
+
+export { renderLiveConfig, HERO, REDUCED, Sky, TABS, WORLD, boot, chipEl, fmtLeft, initKeyboard, initParallax, initSpotlight, minsNow, nextBreak, nextHalfDay, nextSchoolDay, parseClock, renderHero, renderLineup, renderNextDay, renderNowStrip, sessionRanges, setHeroWord, tickNow, todayInfo, updateEdgePlanets, warpBusy, warpTo };

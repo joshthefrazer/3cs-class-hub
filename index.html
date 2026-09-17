@@ -28,7 +28,11 @@
 <link rel="stylesheet" href="styles/boards.css">
 <link rel="stylesheet" href="styles/overlays.css">
 <link rel="stylesheet" href="styles/schedule-bells.css">
+<link rel="stylesheet" href="styles/work.css">
+<link rel="stylesheet" href="styles/palette.css">
+<link rel="stylesheet" href="styles/admin.css">
 <link rel="stylesheet" href="styles/responsive.css">
+<link rel="stylesheet" href="styles/fx.css">
 <link rel="stylesheet" href="styles/motion.css">
 <svg id="sprite" aria-hidden="true" focusable="false"
      style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none">
@@ -102,6 +106,12 @@
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M6.2 6.2l11.6 11.6M17.8 6.2 6.2 17.8"/></symbol>
 
     <!-- 48px world emblems: one object per section -->
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.8 9.6 17.4 19 8"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M12 6.9V12l3.4 2.1"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10.2 13.8a3.8 3.8 0 0 0 5.4 0l2.7-2.7a3.8 3.8 0 0 0-5.4-5.4l-1.3 1.3"/><path d="M13.8 10.2a3.8 3.8 0 0 0-5.4 0l-2.7 2.7a3.8 3.8 0 0 0 5.4 5.4l1.3-1.3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.4v13.2M5.4 12h13.2"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7.2 18.4h9.4a3.9 3.9 0 0 0 .5-7.8 5.6 5.6 0 0 0-10.7-1.2 3.9 3.9 0 0 0 .8 9z"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3.6c3.4 3.2 5.6 6 5.6 9.1a5.6 5.6 0 1 1-11.2 0c0-1.5.6-2.9 1.7-4.3.5 1.1 1.2 1.8 2 2 .3-2.6.9-4.8 1.9-6.8z"/></symbol>
     <symbol id="e-schedule" viewBox="0 0 48 48">
       <circle cx="24" cy="24" r="18.5"/>
       <circle cx="24" cy="24" r="6.4"/>
@@ -143,6 +153,13 @@
       <path class="w1" d="M33.2 13.4a9.6 9.6 0 0 1 3.4 6.7"/>
       <path class="w2" d="M35.3 8.3a14.8 14.8 0 0 1 5.3 10.3"/>
     </symbol>
+    <symbol id="e-work" viewBox="0 0 48 48">
+      <rect x="11" y="10.5" width="26" height="30" rx="4.2"/>
+      <path d="M19.4 10.5V8.8a1.8 1.8 0 0 1 1.8-1.8h5.6a1.8 1.8 0 0 1 1.8 1.8v1.7z"/>
+      <path d="M17.4 20.6h13.2M17.4 26.4h9.4"/>
+      <path class="pulse" d="M17.4 33.2 20.2 36l6.4-6.6" />
+      <g class="sp"><circle cx="24" cy="24" r="21.2" stroke-dasharray="2 7" opacity=".5"/></g>
+    </symbol>
   </defs>
 </svg>
 
@@ -174,11 +191,13 @@
     <div class="hdr-right">
       <span class="auth-who" id="authWho" hidden></span>
       <button class="auth-btn" id="authBtn" type="button" hidden>Sign in</button>
+      <button class="admin-toggle admin-only" id="siteEditorBtn" type="button" hidden><svg class="ic" aria-hidden="true"><use href="#i-spark"></use></svg><span>Edit site</span></button>
       <button class="admin-toggle" id="adminToggleBtn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-lock"></use></svg><span>Admin</span></button>
     </div>
   </div>
   <nav class="tabs" id="tabs">
     <button data-tab="schedule" class="active">Schedule</button>
+    <button data-tab="work">Work</button>
     <button data-tab="notebook">Notebook</button>
     <button data-tab="help">Help Board</button>
     <button data-tab="calendar">Calendar</button>
@@ -337,6 +356,32 @@
   </section>
 
   <!-- NOTEBOOK -->
+  <section class="panel" id="tab-work">
+    <div class="stack">
+
+      <div class="card" id="workIntroCard">
+        <p class="hint" id="workIntro">Everything the class has been set, in the order it's due. Ticking something off is private to you &mdash; nobody else sees your list, not even an admin.</p>
+
+        <div class="work-actions admin-only" hidden>
+          <button class="btn sm" id="workAddBtn"><svg class="ic" aria-hidden="true"><use href="#i-plus"></use></svg> Add assignment</button>
+          <button class="btn ghost sm" id="workSyncBtn"><svg class="ic" aria-hidden="true"><use href="#i-cloud"></use></svg> <span id="workSyncLabel">Connect Google Classroom</span></button>
+        </div>
+        <div class="status-line" id="workSyncStatus"></div>
+        <div class="sync-preview" id="workSyncPreview" hidden></div>
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <div class="chip-row" id="workFilters"></div>
+          <label class="checkline compact"><input type="checkbox" id="workHideDone" checked> Hide what I've finished</label>
+        </div>
+        <div class="work-list" id="workList"></div>
+        <div class="status-line" id="workStatus"></div>
+      </div>
+
+    </div>
+  </section>
+
   <section class="panel" id="tab-notebook">
     <div class="stack">
       <div class="card">
@@ -426,9 +471,32 @@
 </main>
 
 <div id="toast" role="status" aria-live="polite"></div>
-<div class="kbd-hint" id="kbdHint"><b>1</b>–<b>5</b> jump between worlds · <b>/</b> search notes</div>
+<div class="kbd-hint" id="kbdHint"><b>ctrl</b>+<b>K</b> search anything &middot; <b>1</b>&ndash;<b>6</b> jump between worlds</div>
 
 <footer>3CS Class Hub &middot; built from the official Itz'at STEAM Academy 2026&ndash;2027 calendar &middot; last synced content may lag live edits by a moment</footer>
+
+<div class="sheet" id="workSheet" hidden>
+  <div class="box">
+    <div class="sheet-head">
+      <h2 id="workSheetTitle">New assignment</h2>
+      <button class="sheet-close" id="workSheetClose" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"></use></svg></button>
+    </div>
+    <div class="grid-2">
+      <label class="field"><span>Title</span><input id="workTitle" type="text" placeholder="Chapter 7 questions"></label>
+      <label class="field"><span>Subject</span><select id="workSubject"></select></label>
+    </div>
+    <div class="grid-2">
+      <label class="field"><span>Due</span><input id="workDue" type="date"></label>
+      <label class="field"><span>Time (optional)</span><input id="workDueTime" type="time"></label>
+    </div>
+    <label class="field"><span>Details</span><textarea id="workDetail" placeholder="What has to be handed in, and anything the class should know."></textarea></label>
+    <label class="field"><span>Link (optional)</span><input id="workLink" type="url" placeholder="https://"></label>
+    <div class="sheet-actions">
+      <button class="btn ghost sm" id="workDeleteBtn" hidden>Delete</button>
+      <button class="btn" id="workSaveBtn">Post to the class</button>
+    </div>
+  </div>
+</div>
 
 <!-- Admin sheet -->
 <div class="admin-sheet" id="adminSheet" hidden>
@@ -484,6 +552,19 @@
   /* The account that is always an admin. Everyone else gets admin by being
      listed in the config/admins document. Must match the rules file. */
   window.HUB_OWNER = "joshthefrazer@gmail.com";
+
+  /* ------------------------------------------------------------------
+     GOOGLE CLASSROOM (optional).
+
+     A Google Cloud OAuth client id, from a project with the Classroom API
+     enabled. Only an admin is ever asked to connect, and only to their own
+     account: the Hub reads what has been assigned, publishes that to the
+     class, and throws away everything about what has been handed in.
+
+     Leave it empty and the Classroom button simply says it isn't set up.
+     Like the Firebase block above, a client id is public by design.
+     ------------------------------------------------------------------ */
+  window.CLASSROOM_CLIENT_ID = "";
 </script>
 <script type="module" src="js/main.js"></script>
 </body>

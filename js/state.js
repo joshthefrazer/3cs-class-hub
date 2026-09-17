@@ -26,7 +26,13 @@ var state = {
   openThread: null,
   replyUnsub: null,
   nbSubject: "all", nbVis: "all", nbQuery: "",
-  hbStatus: "all", hbSubject: "all"
+  hbStatus: "all", hbSubject: "all",
+
+  assignments: [],       // the class's work, from the db
+  workLoaded: false,
+  workDone: {},          // assignment id -> true, yours alone
+  workSubject: "all",
+  workHideDone: true
 };
 
 try{

@@ -1,4 +1,5 @@
-import { CAL, DOW, MONTHS, MONTH_NAMES } from "./data.js";
+import { DOW, MONTHS, MONTH_NAMES } from "./data.js";
+import { liveCal } from "./live.js";
 import { renderHero } from "./orbit.js";
 import { todayISO } from "./sched.js";
 import { state } from "./state.js";
@@ -42,7 +43,7 @@ function renderCalendar(){
   }
   for (var day=1; day<=daysInMonth; day++){
     var iso = year+"-"+String(month+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");
-    var info = CAL[iso];
+    var info = liveCal()[iso];
     var cell = document.createElement("div");
     cell.className = "cal-cell" + (info && info.kind ? " k-"+info.kind : "") + (iso===todayStr?" is-today":"");
     var html = '<div class="dnum">'+day+'</div>';

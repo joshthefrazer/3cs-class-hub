@@ -41,6 +41,7 @@
   }
 
   body[data-world="schedule"]     { --accent:#2ee6c8; --world-1:#0a3a66; --world-2:#2f95d8; }
+  body[data-world="work"]         { --accent:#5ce08c; --world-1:#0f3d22; --world-2:#3fb96b; }
   body[data-world="notebook"]     { --accent:#f5c46a; --world-1:#5c3a11; --world-2:#d79a48; }
   body[data-world="help"]         { --accent:#ff8a6b; --world-1:#63220f; --world-2:#d95f3c; }
   body[data-world="calendar"]     { --accent:#9d8cff; --world-1:#2a2470; --world-2:#6c5ce0; }
