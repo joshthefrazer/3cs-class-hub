@@ -4032,7 +4032,7 @@
           "Session " + upcoming.n + " at " + upcoming.from));
       } else if (!lesson){
         strip.appendChild(chipEl("Today", "Classes are done",
-          mode.dismissLabel + " was " + mode.dismissal));
+          "Ended at " + mode.dismissal));
       }
       if (lesson || upcoming){
         strip.appendChild(chipEl(mode.dismissLabel, mode.dismissal,
