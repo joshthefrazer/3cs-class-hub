@@ -2,6 +2,7 @@ import { BE, ME, authorFields, canAdmin, dbErrMsg, fmtAgo, meId, mergeField, min
 import { allNotes, renderNotebook } from "./notebook.js";
 import { state } from "./state.js";
 import { openNameSheet, svgIcon } from "./text.js";
+import { avatarEl, displayName, onProfiles } from "./profile.js";
 
 /* =========================================================
    8. Help & Reminders board
@@ -114,8 +115,10 @@ function buildPostCard(p, i){
   if (p.pinned)   chipIcon("i-pin", "Pinned", "hot");
   if (p.locked)   chipIcon("i-lock", "Locked");
   var who = document.createElement("span");
-  who.className = "who"; who.textContent = p.authorName || "Anonymous";
-  head.appendChild(who);
+  who.className = "who";
+  who.appendChild(avatarEl(p.authorUid || p.authorToken, p.authorName, "xs"));
+  who.appendChild(document.createTextNode(p.authorUid ? displayName(p.authorUid, p.authorName) : (p.authorName || "Anonymous")));
+  head.insertBefore(who, head.firstChild);
   var when = document.createElement("span");
   when.textContent = "· " + fmtAgo(p.createdAt);
   head.appendChild(when);
@@ -207,7 +210,9 @@ function buildThread(p){
     var meta = document.createElement("div");
     meta.className = "post-head";
     var w = document.createElement("span");
-    w.className = "who"; w.textContent = r.authorName || "Anonymous";
+    w.className = "who";
+    w.appendChild(avatarEl(r.authorUid || r.authorToken, r.authorName, "xs"));
+    w.appendChild(document.createTextNode(r.authorUid ? displayName(r.authorUid, r.authorName) : (r.authorName || "Anonymous")));
     meta.appendChild(w);
     var t = document.createElement("span");
     t.textContent = "· " + fmtAgo(r.createdAt);

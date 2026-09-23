@@ -8,6 +8,8 @@ import { state } from "./state.js";
 import { bumpLive } from "./live.js";
 import { renderLiveConfig } from "./orbit.js";
 import { openAuthSheet } from "./auth.js";
+import { paintMe, setProfiles } from "./profile.js";
+import { setChat } from "./chat.js";
 
 /* =========================================================
    BACKEND — one data layer, two drivers.
@@ -180,18 +182,21 @@ function initDb(){
    allowlist; gstatic (Firebase's usual host) is not. */
 var FB_VERSION = "12.19.0";
 function loadFirebaseSdk(){
-  return new Promise(function(resolve, reject){
-    if (window.firebase && window.firebase.firestore) return resolve();
-    var base = "https://cdn.jsdelivr.net/npm/firebase@" + FB_VERSION + "/";
-    var files = ["firebase-app-compat.js", "firebase-auth-compat.js", "firebase-firestore-compat.js"];
-    (function next(i){
-      if (i >= files.length) return resolve();
+  if (window.firebase && window.firebase.firestore) return Promise.resolve();
+  var base = "https://cdn.jsdelivr.net/npm/firebase@" + FB_VERSION + "/";
+  function load(f){
+    return new Promise(function(resolve, reject){
       var s = document.createElement("script");
-      s.src = base + files[i];
-      s.onload = function(){ next(i + 1); };
+      s.src = base + f;
+      s.onload = resolve;
       s.onerror = function(){ reject(new Error("Firebase SDK failed to load")); };
       document.head.appendChild(s);
-    })(0);
+    });
+  }
+  /* The app script has to be in place first; auth and firestore can then
+     download side by side. */
+  return load("firebase-app-compat.js").then(function(){
+    return Promise.all([load("firebase-auth-compat.js"), load("firebase-firestore-compat.js")]);
   });
 }
 
@@ -226,6 +231,10 @@ function startFirebase(){
     if (!firebase.apps.length) firebase.initializeApp(cfg);
     BE.kind = "firebase";
     BE.db   = firebase.firestore();
+    /* Keep a local copy between visits: the Hub opens instantly on a slow
+       connection, and a listener that resumes from the cache only pays for
+       what changed. Private windows and old browsers just skip it. */
+    try{ BE.db.enablePersistence({ synchronizeTabs: true }).catch(function(){}); }catch(e){}
     BE.auth = firebase.auth();
     state.db = BE.db;
     BE.auth.onAuthStateChanged(function(u){
@@ -251,6 +260,7 @@ function startFirebase(){
         state.dbSettled = true;
         state.notes = []; state.posts = []; state.announcements = [];
         state.notesLoaded = false; state.postsLoaded = false;
+        setChat([]); setProfiles({});
         paintAuth();
         applyAdminMode();
         renderNotebook(); renderHelp(); renderAnnouncements();
@@ -312,11 +322,12 @@ function paintAuth(){
     adminBtn.hidden = true;
     btn.hidden = false;
     if (BE.user){
-      who.hidden = false;
+      /* Signed in: your avatar stands in for the button, and sign-out
+         lives in the profile sheet. */
+      who.hidden = true;
       who.textContent = BE.user.name + (BE.isAdmin ? " · admin" : "");
-      btn.textContent = "Sign out";
-      btn.className = "auth-btn ghost";
-      btn.onclick = signOutNow;
+      btn.hidden = true;
+      btn.onclick = null;
     } else {
       who.hidden = true;
       btn.textContent = "Sign in";
@@ -328,6 +339,7 @@ function paintAuth(){
     who.hidden = true;
     adminBtn.hidden = false;
   }
+  paintMe();
 }
 
 function startStreams(){
@@ -448,6 +460,29 @@ function startStreams(){
       }, function(){}));
   } else {
     loadLocalDone();
+  }
+
+  /* Names and photos for everyone — a class-sized collection. */
+  if (!usingFirebase() || BE.user){
+    streams.push(db.collection("profiles").limit(100).onSnapshot(function(qs){
+      var map = {};
+      qs.docs.forEach(function(d){ map[d.id] = d.data(); });
+      setProfiles(map);
+    }, function(){}));
+
+    /* The class chat: newest page only. Pending server timestamps are
+       estimated so a message you just sent sorts where it belongs. */
+    var chatQ = db.collection("chat").orderBy("createdAt","desc").limit(50);
+    streams.push(chatQ.onSnapshot(function(qs){
+      var rows = [];
+      qs.docs.forEach(function(d){
+        var data = usingFirebase() ? d.data({ serverTimestamps: "estimate" }) : d.data();
+        var row = Object.assign({ id: d.id }, data);
+        if (d.metadata && d.metadata.hasPendingWrites) row._pending = true;
+        rows.push(row);
+      });
+      setChat(rows);
+    }, function(){ setChat([]); }));
   }
 
   streams.push(db.collection("help").orderBy("createdAt","desc").limit(200).onSnapshot(function(qs){

@@ -4,6 +4,7 @@ import { liveCal, liveSched, liveLegend, liveSessions } from "./live.js";
 import { assignments, duePhrase, isDone, openWorkSheet } from "./work.js";
 import { canAdmin, signedIn, usingFirebase, BE, signIn } from "./backend.js";
 import { openSiteEditor } from "./adminpanel.js";
+import { openAuthSheet } from "./auth.js";
 
 /* =========================================================
    COMMAND PALETTE — one box that finds anything.
@@ -23,6 +24,11 @@ var cursor = 0;
 var goTab = null;       // injected by main to avoid importing the tab owner
 
 function setNavigator(fn){ goTab = fn; }
+
+/* Other modules (quick links, chat, profile, theme) add their own actions
+   here rather than this file importing all of them. */
+var extra = [];
+function registerCommands(fn){ extra.push(fn); }
 function nav(tab){ if (goTab) goTab(tab); }
 
 /* ---------------------------------------------------------------- score -- */
@@ -46,7 +52,7 @@ function score(text, q){
 
 function commands(){
   var c = [
-    { kind:"Go", title:"Schedule",      hint:"today's classes",        run:function(){ nav("schedule"); } },
+    { kind:"Go", title:"Today",         hint:"today's classes and schedule", run:function(){ nav("schedule"); } },
     { kind:"Go", title:"Work",          hint:"what's due",             run:function(){ nav("work"); } },
     { kind:"Go", title:"Notebook",      hint:"shared notes",           run:function(){ nav("notebook"); } },
     { kind:"Go", title:"Help Board",    hint:"questions and reminders",run:function(){ nav("help"); } },
@@ -62,8 +68,9 @@ function commands(){
              run:function(){ openSiteEditor(); } });
   }
   if (usingFirebase() && !BE.user){
-    c.push({ kind:"Do", title:"Sign in with Google", hint:"to post and tick things off", run:function(){ signIn(); } });
+    c.push({ kind:"Do", title:"Sign in", hint:"to post, chat and tick things off", run:function(){ openAuthSheet(); } });
   }
+  extra.forEach(function(fn){ try{ c = c.concat(fn() || []); }catch(e){} });
   return c;
 }
 
@@ -145,7 +152,7 @@ function index(){
 function search(q){
   q = (q || "").trim().toLowerCase();
   var all = index();
-  if (!q) return all.filter(function(r){ return r.kind === "Go" || r.kind === "Do"; });
+  if (!q) return all.filter(function(r){ return r.kind === "Go" || r.kind === "Do" || r.kind === "App"; });
   /* A field that doesn't match scores -1 and must stay negative, or its
      weighting would quietly turn every row into a hit. */
   function part(v, weight){ return v < 0 ? -1 : v + weight; }
@@ -176,7 +183,7 @@ function build(){
         'placeholder="Search everything, or jump somewhere…" aria-label="Search">' +
         '<kbd>esc</kbd>' +
       '</div>' +
-      '<div class="pal-list" id="palList" role="listbox"></div>' +
+      '<div class="pal-list" id="palList" role="listbox" aria-label="Results"></div>' +
       '<div class="pal-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span>' +
       '<span><kbd>↵</kbd> open</span><span><kbd>ctrl</kbd>+<kbd>k</kbd> anytime</span></div>' +
     '</div>';
@@ -274,4 +281,4 @@ function initPalette(){
   }, true);
 }
 
-export { initPalette, show as showPalette, hide as hidePalette, isOpen as paletteOpen, setNavigator, search };
+export { registerCommands, initPalette, show as showPalette, hide as hidePalette, isOpen as paletteOpen, setNavigator, search };

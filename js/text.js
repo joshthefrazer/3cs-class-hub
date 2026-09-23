@@ -108,4 +108,16 @@ function openNameSheet(onDone){
 }
 
 
-export { ESC_MAP, SHARE_BASE, closeSheet, esc, escKey, mdInline, mdRender, openNameSheet, openSheet, sheetEl, svgIcon, toggleCheckSource };
+/* Only ever link out to the web. A "javascript:" or "data:" link typed into a
+   shared field would run in everyone else's page if it were rendered as-is. */
+function safeUrl(u){
+  u = String(u || "").trim();
+  if (!u) return "";
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) u = "https://" + u.replace(/^\/+/, "");
+  try{
+    var x = new URL(u);
+    return (x.protocol === "https:" || x.protocol === "http:") ? x.href : "";
+  }catch(e){ return ""; }
+}
+
+export { safeUrl, ESC_MAP, SHARE_BASE, closeSheet, esc, escKey, mdInline, mdRender, openNameSheet, openSheet, sheetEl, svgIcon, toggleCheckSource };

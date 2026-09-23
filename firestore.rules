@@ -62,6 +62,13 @@ service cloud.firestore {
           && request.resource.data.createdAt == resource.data.createdAt;
     }
 
+    // A link on an assignment may only ever point at the web. A
+    // "javascript:" link would run in every classmate's page.
+    function linkOk(d) {
+      return !('link' in d) || d.link == '' ||
+             (d.link is string && d.link.size() <= 600 && d.link.matches('https?://[^\\s]+'));
+    }
+
     // ---- site configuration ---------------------------------------------
     // The banner, the notebook intro and the subject key. Everyone reads it;
     // only admins change it.
@@ -159,15 +166,67 @@ service cloud.firestore {
                     && request.resource.data.detail.size() <= 5000
                     && request.resource.data.due is string
                     && request.resource.data.due.size() <= 20
-                    && request.resource.data.source in ['manual', 'classroom'];
+                    && request.resource.data.source in ['manual', 'classroom']
+                    && linkOk(request.resource.data);
 
       allow update: if mayUseHub()
                     && keepsAuthor()
                     && (isAdmin() || existingIsMine())
                     && request.resource.data.title is string
-                    && request.resource.data.title.size() <= 300;
+                    && request.resource.data.title.size() <= 300
+                    && linkOk(request.resource.data);
 
       allow delete: if isAdmin() || existingIsMine();
+    }
+
+    // ---- profiles --------------------------------------------------------
+    // A display name and a small photo per person, stored as text on the
+    // document (the free plan has no file storage). Only you can write
+    // yours; the photo has to be a small base64 WebP, JPEG or PNG image.
+    // Admins can remove a profile if something inappropriate goes up.
+
+    match /profiles/{uid} {
+      allow read: if mayUseHub();
+
+      allow create, update: if signedIn()
+                    && request.auth.uid == uid
+                    && request.resource.data.keys().hasOnly(['name', 'photo', 'updatedAt'])
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 40
+                    && request.resource.data.photo is string
+                    && request.resource.data.photo.size() <= 90000
+                    && (request.resource.data.photo == '' ||
+                        request.resource.data.photo.split(',')[0] in
+                          ['data:image/webp;base64', 'data:image/jpeg;base64', 'data:image/png;base64'])
+                    && request.resource.data.updatedAt is string
+                    && request.resource.data.updatedAt.size() <= 40;
+
+      allow delete: if (signedIn() && request.auth.uid == uid) || isAdmin();
+    }
+
+    // ---- class chat ------------------------------------------------------
+    // One room. A message must be signed with the sender's own account and
+    // stamped with the server's clock, so nobody can post as someone else or
+    // backdate one. Messages can't be edited; the sender or an admin can
+    // delete them.
+
+    match /chat/{msgId} {
+      allow read: if mayUseHub();
+
+      allow create: if mayUseHub()
+                    && request.resource.data.keys().hasOnly(['uid', 'name', 'text', 'createdAt'])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0
+                    && request.resource.data.name.size() <= 40
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() <= 800
+                    && request.resource.data.createdAt == request.time;
+
+      allow update: if false;
+      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
     }
 
     // ---- help board ------------------------------------------------------

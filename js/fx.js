@@ -1,4 +1,4 @@
-import { REDUCED, Sky } from "./orbit.js";
+import { REDUCED } from "./orbit.js";
 
 /* =========================================================
    FX — the motion layer.
@@ -35,24 +35,9 @@ function initPointerBus(){
   }, { passive:true });
 }
 
-/* ------------------------------------------------------ starfield drift -- */
-
-/* The sky leans away from the cursor, very slightly. It reads as depth
-   rather than as an effect - most people never notice it directly, they just
-   feel the page isn't flat. */
-function initSkyDrift(){
-  if (REDUCED || !Sky.pull) return;
-  onPointer(function(p){
-    var nx = (p.x / window.innerWidth) * 2 - 1;
-    var ny = (p.y / window.innerHeight) * 2 - 1;
-    Sky.pull(nx, ny);
-  });
-  window.addEventListener("pointerleave", function(){ if (Sky.pull) Sky.pull(0, 0); });
-}
-
 /* -------------------------------------------------------- scroll reveal -- */
 
-var REVEAL = ".card, .work-card, .note-card, .post, .ann-card, .lineup .slot, .now-chip";
+var REVEAL = ".card, .work-card, .note-card, .post, .announce-item";
 
 /* Things rise into place the first time they are scrolled to, once, and then
    the observer lets them go. Elements already on screen at load are revealed
@@ -126,107 +111,6 @@ function replayReveal(){
   });
 }
 
-/* ------------------------------------------------------------ card tilt -- */
-
-/* A few degrees, and only on devices with a real pointer. The card leans
-   toward the cursor like a physical thing being looked at from an angle. */
-function initTilt(){
-  if (REDUCED) return;
-  if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
-
-  var active = null, rect = null;
-
-  document.addEventListener("pointerover", function(e){
-    var el = e.target && e.target.closest ? e.target.closest(".card, .work-card, .note-card") : null;
-    if (el === active) return;
-    if (active){ active.style.transform = ""; active.classList.remove("fx-tilt"); }
-    active = el;
-    if (active){
-      rect = active.getBoundingClientRect();
-      active.classList.add("fx-tilt");
-    }
-  }, { passive:true });
-
-  document.addEventListener("pointerleave", function(){
-    if (active){ active.style.transform = ""; active.classList.remove("fx-tilt"); active = null; }
-  }, true);
-
-  onPointer(function(p){
-    if (!active) return;
-    var r = rect;
-    if (!r || r.width === 0) return;
-    var px = (p.x - r.left) / r.width  - 0.5;
-    var py = (p.y - r.top)  / r.height - 0.5;
-    if (px < -0.6 || px > 0.6 || py < -0.6 || py > 0.6){
-      active.style.transform = "";
-      active.classList.remove("fx-tilt");
-      active = null;
-      return;
-    }
-    var max = r.height > 320 ? 1.6 : 3.2;     // big panels tilt less
-    active.style.transform =
-      "perspective(900px) rotateX(" + (-py * max).toFixed(2) + "deg) rotateY(" +
-      (px * max).toFixed(2) + "deg) translateZ(0)";
-  });
-
-  /* Rects go stale as soon as anything scrolls or the list re-renders. */
-  window.addEventListener("scroll", function(){
-    if (active) rect = active.getBoundingClientRect();
-  }, { passive:true });
-}
-
-/* ------------------------------------------------------ magnetic buttons -- */
-
-/* Buttons drift a couple of pixels toward the cursor as it approaches, which
-   makes them feel like they want to be pressed. Small enough that it never
-   moves the hit target out from under a finger. */
-function initMagnet(){
-  if (REDUCED) return;
-  if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
-
-  var SEL = ".btn, .chip-btn, .auth-btn, .admin-toggle, .work-tick";
-  var near = [];
-
-  /* The candidate list is cached rather than re-queried every frame: the
-     filter rows alone are fifteen buttons, and a querySelectorAll per pointer
-     move is exactly the kind of thing that makes a cheap laptop stutter. */
-  var cache = [], cacheAt = 0;
-  function candidates(){
-    var now = Date.now();
-    if (now - cacheAt > 400){
-      cache = [].slice.call(document.querySelectorAll(SEL));
-      cacheAt = now;
-    }
-    return cache;
-  }
-
-  onPointer(function(p){
-    var els = candidates();
-    var seen = [];
-    els.forEach(function(el){
-      var r = el.getBoundingClientRect();
-      if (!r.width) return;
-      var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-      var dx = p.x - cx, dy = p.y - cy;
-      var reach = Math.max(r.width, r.height) * 0.9 + 26;
-      var d = Math.sqrt(dx * dx + dy * dy);
-      if (d > reach) return;
-      var k = (1 - d / reach) * 0.24;
-      el.style.setProperty("--mag-x", (dx * k).toFixed(2) + "px");
-      el.style.setProperty("--mag-y", (dy * k).toFixed(2) + "px");
-      el.classList.add("fx-mag");
-      seen.push(el);
-    });
-    near.forEach(function(el){
-      if (seen.indexOf(el) > -1) return;
-      el.style.removeProperty("--mag-x");
-      el.style.removeProperty("--mag-y");
-      el.classList.remove("fx-mag");
-    });
-    near = seen;
-  });
-}
-
 /* ------------------------------------------------------------- ripple ---- */
 
 /* A press leaves a mark where it was pressed. Uses one element, added and
@@ -234,7 +118,7 @@ function initMagnet(){
 function initRipple(){
   if (REDUCED) return;
   document.addEventListener("pointerdown", function(e){
-    var el = e.target && e.target.closest ? e.target.closest(".btn, .chip-btn, .console-tab, .pal-row, .admin-toggle, .auth-btn") : null;
+    var el = e.target && e.target.closest ? e.target.closest(".btn, .chip-btn, .console-tab, .pal-row, .auth-btn, .quick") : null;
     if (!el) return;
     var r = el.getBoundingClientRect();
     var d = Math.max(r.width, r.height) * 1.6;
@@ -249,25 +133,12 @@ function initRipple(){
   }, { passive:true });
 }
 
-/* ------------------------------------------------------------ hero glow -- */
-
-/* The big word picks up a slow sweep of light. Pure CSS once the class is on;
-   this only decides when it is worth running. */
-function initHeroSheen(){
-  if (REDUCED) return;
-  document.body.classList.add("fx-sheen");
-}
-
 /* ---------------------------------------------------------------- boot --- */
 
 function initFx(){
   initPointerBus();
-  initSkyDrift();
   initReveal();
-  initTilt();
-  initMagnet();
   initRipple();
-  initHeroSheen();
 }
 
 export { initFx, replayReveal, onPointer };

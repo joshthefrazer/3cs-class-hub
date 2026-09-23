@@ -8,177 +8,50 @@ import { renderHelp } from "./help.js";
 import { renderNotebook, renderNotebookIntro } from "./notebook.js";
 import { dayNumberFromLabel, renderBell, renderLegend, renderScheduleTable, renderSubjectSelectors, todayISO } from "./sched.js";
 import { state } from "./state.js";
-import { renderWork, renderWorkFilters, workSummary } from "./work.js";
-import { initPalette, setNavigator, paletteOpen } from "./palette.js";
+import { renderWork, renderWorkFilters, renderDueSoon, workSummary } from "./work.js";
+import { initPalette, setNavigator, paletteOpen, showPalette } from "./palette.js";
 import { initFx, replayReveal } from "./fx.js";
 import { esc, svgIcon } from "./text.js";
+import { initTheme } from "./theme.js";
+import { initLinks } from "./links.js";
+import { initProfile, onProfiles } from "./profile.js";
+import { initChat } from "./chat.js";
 
 /* =========================================================
-   9. Orbit — starfield, worlds, warp navigation, live "now"
+   9. Today + navigation — the live "now", section changes, keys
    ========================================================= */
 var TABS = ["schedule","work","notebook","help","calendar","announcements"];
 var WORLD = {
-  schedule:      { label:"Schedule",      g1:"#2f95d8", g2:"#0a3a66", a:"#2ee6c8" },
-  work:          { label:"Work",          g1:"#3fb96b", g2:"#0f3d22", a:"#5ce08c" },
-  notebook:      { label:"Notebook",      g1:"#d79a48", g2:"#5c3a11", a:"#f5c46a" },
-  help:          { label:"Help Board",    g1:"#d95f3c", g2:"#63220f", a:"#ff8a6b" },
-  calendar:      { label:"Calendar",      g1:"#6c5ce0", g2:"#2a2470", a:"#9d8cff" },
-  announcements: { label:"Announcements", g1:"#d0629b", g2:"#5e1f45", a:"#ff9ec4" }
+  schedule:      { label:"Today" },
+  work:          { label:"Work" },
+  notebook:      { label:"Notebook" },
+  help:          { label:"Help board" },
+  calendar:      { label:"Calendar" },
+  announcements: { label:"Announcements" }
 };
 var HERO = {
-  work:          { eyebrow:"What's actually due", word:"WORK",
-    sub:"Every assignment the class has been set, soonest first. Ticking one off is private to you." },
-  notebook:      { eyebrow:"Shared by the class", word:"NOTEBOOK",
-    sub:"Everything 3CS is working from — notes, resources, revision checklists. Anyone in the class can add a page." },
-  help:          { eyebrow:"Ask · answer · remind", word:"HELP",
+  work:          { eyebrow:"What's actually due", word:"Work",
+    sub:"Soonest first. Tick things off as you finish them." },
+  notebook:      { eyebrow:"Shared by the class", word:"Notebook",
+    sub:"Notes, resources and revision checklists — anyone in 3CS can add a page." },
+  help:          { eyebrow:"Ask · answer · remind", word:"Help board",
     sub:"Stuck on something? Post it. Remember something the class will forget? Post that too." },
-  announcements: { eyebrow:"From the front of the room", word:"NOTICES",
-    sub:"Official word from admins — closures, schedule changes, and anything pinned to the top of the Hub." }
+  announcements: { eyebrow:"From the front of the room", word:"Announcements",
+    sub:"Official word from admins — closures, schedule changes, and anything pinned to the top." }
 };
 
 var REDUCED = false;
 try{ REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
 
-/* ---------- starfield ---------- */
-var Sky = (function(){
-  var cv, ctx, W = 0, H = 0, cx = 0, cy = 0, dpr = 1;
-  var stars = [], shooters = [], warp = 0, warpTarget = 0, last = 0, tint = "#2ee6c8";
-  var pullX = 0, pullY = 0, pullTX = 0, pullTY = 0;   // cursor lean, eased
-  var nextShooter = 4000;
-
-  function mk(z){
-    return {
-      x: Math.random() * 2 - 1,
-      y: Math.random() * 2 - 1,
-      z: z == null ? Math.random() : z,
-      tw: Math.random() * Math.PI * 2,
-      warm: Math.random() < 0.14,
-      px: 0, py: 0, seen: false
-    };
-  }
-  function resize(){
-    W = window.innerWidth; H = window.innerHeight;
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-    cv.width = Math.floor(W * dpr); cv.height = Math.floor(H * dpr);
-    cv.style.width = W + "px"; cv.style.height = H + "px";
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    cx = W / 2; cy = H / 2;
-    var target = Math.round(Math.min(560, Math.max(150, (W * H) / 3000)));
-    stars = [];
-    for (var i = 0; i < target; i++) stars.push(mk());
-  }
-  function frame(now){
-    requestAnimationFrame(frame);
-    if (document.hidden) { last = now; return; }
-    var dt = Math.min(0.05, (now - last) / 1000);
-    last = now;
-
-    warp += (warpTarget - warp) * Math.min(1, dt * 7);
-    pullX += (pullTX - pullX) * Math.min(1, dt * 2.6);
-    pullY += (pullTY - pullY) * Math.min(1, dt * 2.6);
-    ctx.clearRect(0, 0, W, H);
-
-    var speed = (REDUCED ? 0 : 0.016) + warp * 0.9;
-    var t = now / 1000;
-    var hw = W * 0.5, hh = H * 0.5;
-
-    for (var i = 0; i < stars.length; i++){
-      var s = stars[i];
-      s.z -= speed * dt;
-      if (s.z <= 0.03){ stars[i] = mk(1); continue; }
-
-      /* Nearer stars lean further, which is what makes it read as depth. */
-      var lean = (1 - s.z) * 26;
-      var sx = cx + (s.x / s.z) * hw - pullX * lean;
-      var sy = cy + (s.y / s.z) * hh - pullY * lean;
-      if (sx < -60 || sx > W + 60 || sy < -60 || sy > H + 60){ stars[i] = mk(1); continue; }
-
-      var size = (1 - s.z) * 1.9 + 0.3;
-      var alpha = (0.32 + 0.44 * Math.sin(s.tw + t * 1.6)) * (1 - s.z * 0.55);
-      if (alpha < 0.03) alpha = 0.03;
-
-      if (warp > 0.04 && s.seen){
-        ctx.strokeStyle = s.warm ? tint : "#ffffff";
-        ctx.globalAlpha = Math.min(0.85, alpha + warp * 0.5);
-        ctx.lineWidth = Math.max(0.6, size * 0.8);
-        ctx.beginPath();
-        ctx.moveTo(s.px, s.py);
-        ctx.lineTo(sx, sy);
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = s.warm ? tint : "#ffffff";
-        ctx.globalAlpha = alpha;
-        ctx.beginPath();
-        ctx.arc(sx, sy, size, 0, 6.2832);
-        ctx.fill();
-      }
-      s.px = sx; s.py = sy; s.seen = true;
-    }
-
-    /* shooting stars — rare, quiet, never during warp */
-    if (!REDUCED && warp < 0.05){
-      nextShooter -= dt * 1000;
-      if (nextShooter <= 0){
-        nextShooter = 7000 + Math.random() * 11000;
-        shooters.push({
-          x: Math.random() * W * 0.7, y: Math.random() * H * 0.45,
-          vx: 280 + Math.random() * 200, vy: 110 + Math.random() * 90, life: 1
-        });
-      }
-    }
-    for (var k = shooters.length - 1; k >= 0; k--){
-      var sh = shooters[k];
-      sh.x += sh.vx * dt; sh.y += sh.vy * dt; sh.life -= dt * 0.75;
-      if (sh.life <= 0){ shooters.splice(k, 1); continue; }
-      var g = ctx.createLinearGradient(sh.x, sh.y, sh.x - sh.vx * 0.13, sh.y - sh.vy * 0.13);
-      g.addColorStop(0, "rgba(255,255,255," + (sh.life * 0.9) + ")");
-      g.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.strokeStyle = g; ctx.globalAlpha = 1; ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.moveTo(sh.x, sh.y);
-      ctx.lineTo(sh.x - sh.vx * 0.13, sh.y - sh.vy * 0.13);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  return {
-    init: function(){
-      cv = document.getElementById("starfield");
-      if (!cv || !cv.getContext) return;
-      ctx = cv.getContext("2d");
-      resize();
-      var rt = null;
-      window.addEventListener("resize", function(){
-        clearTimeout(rt);
-        rt = setTimeout(resize, 160);
-      });
-      last = performance.now();
-      requestAnimationFrame(frame);
-    },
-    warp: function(v){ warpTarget = v; },
-    pull: function(x, y){ pullTX = x; pullTY = y; },
-    tint: function(c){ tint = c; }
-  };
-})();
-
-/* ---------- worlds ---------- */
-function updateEdgePlanets(tab){
-  var i = TABS.indexOf(tab);
-  if (i < 0) return;
-  var pairs = [
-    { el: document.getElementById("edgeLeft"),  tab: TABS[(i - 1 + TABS.length) % TABS.length] },
-    { el: document.getElementById("edgeRight"), tab: TABS[(i + 1) % TABS.length] }
-  ];
-  pairs.forEach(function(p){
-    if (!p.el) return;
-    var w = WORLD[p.tab];
-    p.el.setAttribute("data-go", p.tab);
-    p.el.style.color = w.a;
-    p.el.querySelector(".ep-orb use").setAttribute("href", "#e-" + p.tab);
-    p.el.querySelector(".ep-label").textContent = w.label;
-    p.el.setAttribute("aria-label", "Go to " + w.label);
-  });
+/* The sliding pill behind the active section on wide screens. */
+function updateTabInk(){
+  var nav = document.getElementById("tabs");
+  var ink = document.getElementById("tabInk");
+  if (!nav || !ink) return;
+  var btn = nav.querySelector("button.active");
+  if (!btn || !btn.offsetWidth){ ink.style.setProperty("--ink-w", "0px"); return; }
+  ink.style.setProperty("--ink-x", btn.offsetLeft + "px");
+  ink.style.setProperty("--ink-w", btn.offsetWidth + "px");
 }
 
 function setHeroWord(text){
@@ -190,7 +63,7 @@ function setHeroWord(text){
     var s = document.createElement("span");
     s.className = "ch";
     s.textContent = c === " " ? " " : c;
-    s.style.animationDelay = (i * 0.05) + "s";
+    s.style.animationDelay = (i * 0.035) + "s";
     s.setAttribute("aria-hidden", "true");
     el.appendChild(s);
   });
@@ -216,27 +89,31 @@ function renderHero(tab){
 
   var emb = document.getElementById("heroEmblemUse");
   if (emb) emb.querySelector("use").setAttribute("href", "#e-" + tab);
-  hero.classList.toggle("compact", tab !== "schedule");
+  hero.classList.toggle("today", tab === "schedule");
   cta.hidden = tab !== "schedule";
   strip.hidden = tab !== "schedule";
+  var bar = document.getElementById("dayBar");
+  if (bar && tab !== "schedule") bar.hidden = true;
+  var flag0 = document.getElementById("modeFlag");
+  if (flag0 && tab !== "schedule") flag0.hidden = true;
 
   if (tab === "schedule"){
     var d = new Date(), ti = todayInfo();
     eyebrow.textContent = d.toLocaleDateString(undefined, { weekday:"long", month:"long", day:"numeric" });
     if (ti.info && ti.info.kind === "holiday"){
-      setHeroWord("NO SCHOOL");
+      setHeroWord("No school");
       sub.textContent = ti.info.events[0] || "Holiday.";
     } else if (ti.info && ti.info.kind === "async"){
-      setHeroWord("ASYNC");
+      setHeroWord("Async day");
       sub.textContent = "Asynchronous day — work from home, no in-person classes.";
     } else if (ti.dayNum){
-      setHeroWord("DAY " + ti.dayNum);
+      setHeroWord("Day " + ti.dayNum);
       var extras = (ti.info.events || []).filter(function(e){ return !/^Week \d+$/.test(e); });
       sub.textContent = extras.length
         ? extras.join(" · ")
         : "Day " + ti.dayNum + " of the seven-day cycle. Six sessions, starting at 8:00.";
     } else {
-      setHeroWord(d.getDay() === 0 || d.getDay() === 6 ? "WEEKEND" : "NO CLASSES");
+      setHeroWord(d.getDay() === 0 || d.getDay() === 6 ? "Weekend" : "No classes");
       sub.textContent = "Nothing scheduled today — the next cycle day is on the Calendar.";
     }
     renderNowStrip();
@@ -245,7 +122,7 @@ function renderHero(tab){
   } else if (tab === "calendar"){
     var my = MONTHS[calCursor];
     eyebrow.textContent = "The whole school year";
-    setHeroWord(MONTH_NAMES[my[1]].toUpperCase());
+    setHeroWord(MONTH_NAMES[my[1]]);
     sub.textContent = "Cycle days, holidays, quick exits and half days for " + MONTH_NAMES[my[1]] + " " + my[0] + ".";
   } else {
     var h = HERO[tab];
@@ -433,6 +310,59 @@ function renderNowStrip(){
 
   var br = nextBreak();
   if (br) strip.appendChild(chipEl("Next break", br.days + (br.days === 1 ? " day" : " days"), br.name));
+  renderDayBar();
+}
+
+/* ---------- the school day as one bar ---------- */
+function dayBounds(){
+  var ti = todayInfo();
+  if (!ti.dayNum || (ti.info && (ti.info.kind === "holiday" || ti.info.kind === "async"))) return null;
+  var mode = liveDayMode(ti.info), ranges = sessionRanges(mode);
+  if (!ranges.length) return null;
+  var start = ranges[0].start, end = parseClock(mode.dismissal);
+  if (!(end > start)) end = ranges[ranges.length - 1].end;
+  return { start: start, end: end, ranges: ranges, from: ranges[0].from, to: mode.dismissal };
+}
+function minsText(m){
+  m = Math.max(0, Math.ceil(m));
+  if (m >= 60) return Math.floor(m / 60) + "h " + (m % 60 < 10 ? "0" : "") + (m % 60) + "m";
+  return m + " min";
+}
+function dayLabel(b, cur){
+  if (cur < b.start) return "School starts at " + b.from;
+  if (cur >= b.end) return "That's the day done";
+  return Math.floor(((cur - b.start) / (b.end - b.start)) * 100) + "% through the day · " + minsText(b.end - cur) + " to go";
+}
+function renderDayBar(){
+  var bar = document.getElementById("dayBar");
+  if (!bar) return;
+  var b = state.tab === "schedule" ? dayBounds() : null;
+  if (!b){ bar.hidden = true; return; }
+  var cur = minsNow(), span = b.end - b.start;
+  var p = Math.max(0, Math.min(1, (cur - b.start) / span));
+  var ticks = b.ranges.slice(1).map(function(r){
+    return '<i class="day-tick" style="left:' + (((r.start - b.start) / span) * 100).toFixed(2) + '%"></i>';
+  }).join("");
+  bar.hidden = false;
+  bar.innerHTML =
+    '<div class="day-bar-top"><span>' + esc(b.from) + '</span><span id="dayBarLabel">' + esc(dayLabel(b, cur)) +
+    '</span><span>' + esc(b.to) + '</span></div>' +
+    '<div class="day-track" role="progressbar" aria-label="School day progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
+    Math.round(p * 100) + '"><div class="day-fill" id="dayFill" style="--p:' + (p * 100).toFixed(2) + '%"></div>' + ticks + '</div>';
+}
+function tickDayBar(){
+  var fill = document.getElementById("dayFill");
+  var lab = document.getElementById("dayBarLabel");
+  if (!fill) return;
+  var b = dayBounds();
+  if (!b) return;
+  var cur = minsNow();
+  var p = Math.max(0, Math.min(1, (cur - b.start) / (b.end - b.start)));
+  fill.style.setProperty("--p", (p * 100).toFixed(2) + "%");
+  if (lab){
+    var t = dayLabel(b, cur);
+    if (lab.textContent !== t) lab.textContent = t;
+  }
 }
 
 /* One-second tick for the countdown only; a full re-render happens when the
@@ -441,6 +371,7 @@ function tickNow(){
   if (document.hidden || state.tab !== "schedule") return;
   var ti = todayInfo();
   if (!ti.dayNum) return;
+  tickDayBar();
   var mode = liveDayMode(ti.info), cur = minsNow();
   var ranges = sessionRanges(mode), lesson = null, idx = -1;
   ranges.forEach(function(r, i){ if (cur >= r.start && cur < r.end){ lesson = r; idx = i; } });
@@ -505,7 +436,7 @@ function renderLineup(){
     slot.className = "slot" + (live ? " now" : (cur >= r.end ? " past" : ""));
     slot.style.animationDelay = (i * 0.05) + "s";
     var n = document.createElement("div"); n.className = "s-n";
-    n.textContent = (live ? "● now · " : "S" + r.n + " · ") + r.time;
+    n.textContent = (live ? "Now · " : "S" + r.n + " · ") + r.time;
     var cc = document.createElement("div"); cc.className = "s-c"; cc.textContent = c.c;
     var m = document.createElement("div"); m.className = "s-m"; m.textContent = c.r + " · " + c.t;
     slot.appendChild(n); slot.appendChild(cc); slot.appendChild(m);
@@ -527,51 +458,41 @@ function renderLineup(){
   wrap.appendChild(end);
 }
 
-/* ---------- warp navigation ---------- */
-var warpBusy = false;
+/* ---------- section changes ---------- */
+/* A directional glide between sections: forward slides left, back slides
+   right, using the browser's view transitions where they exist and a plain
+   CSS entrance everywhere else. */
+var navBusy = false;
 function warpTo(tab){
-  if (tab === state.tab) return;
-  if (REDUCED){ setTab(tab); return; }
-  if (warpBusy){ setTab(tab); return; }
-  warpBusy = true;
-  document.body.classList.add("warping");
-  Sky.warp(1);
-  setTimeout(function(){ Sky.warp(0); }, 340);
-  setTimeout(function(){ setTab(tab); window.scrollTo({ top:0, behavior:"auto" }); }, 250);
-  setTimeout(function(){ document.body.classList.remove("warping"); warpBusy = false; }, 820);
+  if (tab === state.tab || TABS.indexOf(tab) < 0) return;
+  var from = TABS.indexOf(state.tab), to = TABS.indexOf(tab);
+  document.documentElement.setAttribute("data-dir", to < from ? "back" : "fwd");
+  function go(){
+    setTab(tab);
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }
+  if (REDUCED || !document.startViewTransition || navBusy){ go(); return; }
+  navBusy = true;
+  var root = document.documentElement;
+  root.classList.add("vt-active");
+  function done(){ navBusy = false; root.classList.remove("vt-active"); }
+  try{
+    var vt = document.startViewTransition(go);
+    vt.finished.then(done, done);
+  }catch(e){ done(); go(); }
 }
+var warpBusy = false;
 
-/* ---------- pointer spotlight ---------- */
-function initSpotlight(){
-  var queued = false, lastEvt = null;
-  document.addEventListener("pointermove", function(e){
-    lastEvt = e;
-    if (queued) return;
-    queued = true;
-    requestAnimationFrame(function(){
-      queued = false;
-      var t = lastEvt.target;
-      if (!t || !t.closest) return;
-      var el = t.closest(".card, .note-card, .post");
-      if (!el) return;
-      var r = el.getBoundingClientRect();
-      el.style.setProperty("--mx", (((lastEvt.clientX - r.left) / r.width) * 100) + "%");
-      el.style.setProperty("--my", (((lastEvt.clientY - r.top) / r.height) * 100) + "%");
-    });
-  }, { passive:true });
-}
-
-/* ---------- scroll parallax ---------- */
-function initParallax(){
-  if (REDUCED) return;
-  var queued = false;
+/* ---------- header state on scroll ---------- */
+function initScrollState(){
+  var queued = false, on = false;
   window.addEventListener("scroll", function(){
     if (queued) return;
     queued = true;
     requestAnimationFrame(function(){
       queued = false;
-      document.documentElement.style.setProperty("--planet-shift",
-        Math.min(window.scrollY * 0.26, 400) + "px");
+      var next = window.scrollY > 6;
+      if (next !== on){ on = next; document.body.classList.toggle("scrolled", on); }
     });
   }, { passive:true });
 }
@@ -597,18 +518,24 @@ function initKeyboard(){
   setNavigator(function(tab){ warpTo(tab); });
 
   var hint = document.getElementById("kbdHint");
-  if (hint){
+  var fine = window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  var seenHint = false;
+  try{ seenHint = localStorage.getItem("3cs_kbd_hint") === "1"; localStorage.setItem("3cs_kbd_hint", "1"); }catch(e){}
+  if (hint && fine && !seenHint){
     setTimeout(function(){ hint.classList.add("show"); }, 2200);
     setTimeout(function(){ hint.classList.remove("show"); }, 9500);
   }
 }
 
 function boot(){
-  Sky.init();
-  initSpotlight();
-  initParallax();
+  initTheme();
+  initScrollState();
   initKeyboard();
   wire();
+  initLinks();
+  initProfile();
+  initChat();
+  onProfiles(renderHelp);
   renderBell();
   renderScheduleTable(todayInfo().dayNum);
   renderCalendarDow();
@@ -632,6 +559,13 @@ function boot(){
     if (lastTab && TABS.indexOf(lastTab) > -1) startTab = lastTab;
   }catch(e){}
   setTab(startTab);
+  renderDueSoon();
+  requestAnimationFrame(updateTabInk);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(updateTabInk);
+  var inkT = null;
+  window.addEventListener("resize", function(){ clearTimeout(inkT); inkT = setTimeout(updateTabInk, 120); });
+  var sb = document.getElementById("searchBtn");
+  if (sb) sb.addEventListener("click", function(){ showPalette(); });
 
   // Keep "now" honest without hammering the page: half-minute ticks,
   // and a fresh render whenever the tab comes back into view.
@@ -648,6 +582,9 @@ function boot(){
   });
 
   initDb();
+  /* Everything above has painted its first real content, so the page can
+     show without the sections jumping around as they fill in. */
+  document.documentElement.classList.add("booted");
 }
 
 
@@ -667,4 +604,4 @@ function renderLiveConfig(){
   }catch(e){ /* a half-built DOM during boot is not worth breaking the stream for */ }
 }
 
-export { renderLiveConfig, HERO, REDUCED, Sky, TABS, WORLD, boot, chipEl, fmtLeft, initKeyboard, initParallax, initSpotlight, minsNow, nextBreak, nextHalfDay, nextSchoolDay, parseClock, renderHero, renderLineup, renderNextDay, renderNowStrip, sessionRanges, setHeroWord, tickNow, todayInfo, updateEdgePlanets, warpBusy, warpTo };
+export { renderLiveConfig, HERO, REDUCED, TABS, WORLD, boot, chipEl, fmtLeft, initKeyboard, minsNow, nextBreak, nextHalfDay, nextSchoolDay, parseClock, renderDayBar, renderHero, renderLineup, renderNextDay, renderNowStrip, sessionRanges, setHeroWord, tickNow, todayInfo, updateTabInk, warpBusy, warpTo };

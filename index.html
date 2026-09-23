@@ -3,38 +3,80 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Schedule, calendar, notebook and help board for 3CS at Itz'at STEAM Academy, 2026-2027.">
-<style>
-  :root{ padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
-  body{ margin:0; font-family: system-ui, sans-serif; font-size:14px; }
-  img{ max-width:100%; }
-  [hidden]{ display:none !important; }
-</style>
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Crect%20width%3D%2224%22%20height%3D%2224%22%20rx%3D%225%22%20fill%3D%22%230a1020%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%232ee6c8%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%223.3%22%20fill%3D%22%232ee6c8%22%20stroke%3D%22none%22%2F%3E%3Cellipse%20cx%3D%2212%22%20cy%3D%2212%22%20rx%3D%229%22%20ry%3D%224.1%22%20transform%3D%22rotate%28-28%2012%2012%29%22%2F%3E%3Ccircle%20cx%3D%2219.6%22%20cy%3D%228.1%22%20r%3D%221.2%22%20fill%3D%22%232ee6c8%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
-<meta name="theme-color" content="#0a1020">
-<title>3CS Class Hub</title>
-</head>
-<body>
+<title>3CS Class Hub · Itz'at STEAM Academy</title>
+<meta name="description" content="Today's classes, what's due, the class notebook, help board, calendar and chat for 3CS at Itz'at STEAM Academy, 2026–2027.">
+<meta name="theme-color" content="#F7F5FD" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F0B1D" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="website">
+<meta property="og:title" content="3CS Class Hub">
+<meta property="og:description" content="Itz'at STEAM Academy · 2026–2027. Today's classes, what's due, notes, help and class chat in one place.">
+<meta property="og:url" content="https://joshthefrazer.github.io/3cs-class-hub/">
+<meta property="og:image" content="https://joshthefrazer.github.io/3cs-class-hub/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/itzat-glyph.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<script>
+  /* Runs before first paint: picks the theme so there is no flash of the
+     wrong one, and decides whether today's first visit gets the intro. */
+  (function(){
+    var d = document.documentElement;
+    try{
+      var t = localStorage.getItem("3cs_theme");
+      if (t === "dark" || t === "light") d.setAttribute("data-theme", t);
+    }catch(e){}
+    if ("startViewTransition" in document) d.classList.add("vt");
+    setTimeout(function(){ d.classList.add("booted"); }, 5000);
+    try{
+      var s = location.search, h = location.hash || "";
+      var force = /[?&]intro=1/.test(s), never = /[?&]intro=0/.test(s);
+      var seen = localStorage.getItem("3cs_intro_day");
+      if (!never && h.indexOf("#note=") !== 0 && (force || seen !== new Date().toDateString())){
+        d.classList.add("intro-on");
+        /* If the intro script never starts (offline, blocked), don't trap anyone behind it. */
+        setTimeout(function(){ if (!window.__introStarted) d.classList.remove("intro-on"); }, 4000);
+        setTimeout(function(){ d.classList.remove("intro-on"); }, 30000);
+      }
+    }catch(e){}
+  })();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles/tokens.css">
-<link rel="stylesheet" href="styles/cosmos.css">
-<link rel="stylesheet" href="styles/chrome.css">
-<link rel="stylesheet" href="styles/base.css">
-<link rel="stylesheet" href="styles/hero.css">
-<link rel="stylesheet" href="styles/buttons.css">
-<link rel="stylesheet" href="styles/schedule.css">
-<link rel="stylesheet" href="styles/calendar.css">
-<link rel="stylesheet" href="styles/boards.css">
-<link rel="stylesheet" href="styles/overlays.css">
-<link rel="stylesheet" href="styles/schedule-bells.css">
-<link rel="stylesheet" href="styles/auth.css">
-<link rel="stylesheet" href="styles/work.css">
-<link rel="stylesheet" href="styles/palette.css">
-<link rel="stylesheet" href="styles/admin.css">
-<link rel="stylesheet" href="styles/responsive.css">
-<link rel="stylesheet" href="styles/fx.css">
-<link rel="stylesheet" href="styles/motion.css">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&family=JetBrains+Mono:wght@400;500;600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&family=JetBrains+Mono:wght@400;500;600&display=swap"></noscript>
+<link rel="stylesheet" href="styles/theme.css">
+<link rel="stylesheet" href="styles/layout.css">
+<link rel="stylesheet" href="styles/components.css">
+<link rel="stylesheet" href="styles/features.css">
+<link rel="stylesheet" href="styles/social.css">
+<link rel="stylesheet" href="styles/intro.css">
+<link rel="modulepreload" href="js/main.js">
+<link rel="modulepreload" href="js/orbit.js">
+<link rel="modulepreload" href="js/admin.js">
+<link rel="modulepreload" href="js/backend.js">
+<link rel="modulepreload" href="js/state.js">
+<link rel="modulepreload" href="js/data.js">
+<link rel="modulepreload" href="js/live.js">
+<link rel="modulepreload" href="js/sched.js">
+<link rel="modulepreload" href="js/cal.js">
+<link rel="modulepreload" href="js/text.js">
+<link rel="modulepreload" href="js/work.js">
+<link rel="modulepreload" href="js/notebook.js">
+<link rel="modulepreload" href="js/help.js">
+<link rel="modulepreload" href="js/ann.js">
+<link rel="modulepreload" href="js/palette.js">
+<link rel="modulepreload" href="js/fx.js">
+<link rel="modulepreload" href="js/auth.js">
+<link rel="modulepreload" href="js/adminpanel.js">
+<link rel="modulepreload" href="js/classroom.js">
+<link rel="modulepreload" href="js/intro.js">
+<link rel="modulepreload" href="js/theme.js">
+<link rel="modulepreload" href="js/links.js">
+<link rel="modulepreload" href="js/profile.js">
+<link rel="modulepreload" href="js/chat.js">
+</head>
+<body data-world="schedule">
 <svg id="sprite" aria-hidden="true" focusable="false"
      style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none">
   <defs>
@@ -161,109 +203,212 @@
       <path class="pulse" d="M17.4 33.2 20.2 36l6.4-6.6" />
       <g class="sp"><circle cx="24" cy="24" r="21.2" stroke-dasharray="2 7" opacity=".5"/></g>
     </symbol>
+    <!-- navigation + chrome -->
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3.8 10.6 12 4l8.2 6.6"/><path d="M6 9v9.6a1.4 1.4 0 0 0 1.4 1.4h9.2a1.4 1.4 0 0 0 1.4-1.4V9"/><path d="M10 20v-5.2h4V20"/></symbol>
+    <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="5" y="4.6" width="14" height="16.4" rx="2.6"/><path d="M9 4.6V3.8a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v.8"/><path d="M8.6 12.4l2.2 2.2 4.6-4.6"/></symbol>
+    <symbol id="i-notebook" viewBox="0 0 24 24"><path d="M12 6.6C10 5 7.6 4.4 4.8 4.6a1 1 0 0 0-.9 1v11.6a1 1 0 0 0 1.1 1c2.6-.2 4.9.4 7 2"/><path d="M12 6.6c2-1.6 4.4-2.2 7.2-2a1 1 0 0 1 .9 1v11.6a1 1 0 0 1-1.1 1c-2.6-.2-4.9.4-7 2"/><path d="M12 6.6v13.6"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><path d="M4 7.2A2.7 2.7 0 0 1 6.7 4.5h10.6A2.7 2.7 0 0 1 20 7.2v6.4a2.7 2.7 0 0 1-2.7 2.7H9.4L4 20.3z"/><path d="M10.2 8.6a2 2 0 1 1 2.6 1.9c-.5.2-.8.6-.8 1.1v.4"/><circle cx="12" cy="14" r=".9" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.8" y="5.2" width="16.4" height="15" rx="2.8"/><path d="M3.8 9.8h16.4M8.2 3.4v3.6M15.8 3.4v3.6"/><circle cx="12" cy="14.6" r="1.4" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-megaphone" viewBox="0 0 24 24"><path d="M4 10.2v3.6a1 1 0 0 0 1 1h2.4l7.4 4.2V5L7.4 9.2H5a1 1 0 0 0-1 1z"/><path d="M18 9a4 4 0 0 1 0 6"/><path d="M8 14.8l1.2 4.6"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.4" height="6.4" rx="1.8"/><rect x="13.6" y="4" width="6.4" height="6.4" rx="1.8"/><rect x="4" y="13.6" width="6.4" height="6.4" rx="1.8"/><rect x="13.6" y="13.6" width="6.4" height="6.4" rx="1.8"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.8v2M12 19.2v2M2.8 12h2M19.2 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M5.5 18.5l1.4-1.4M17.1 6.9l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M19.4 14.6A7.8 7.8 0 0 1 9.4 4.6a7.8 7.8 0 1 0 10 10z"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M4.6 11.4 19.4 4.6l-6.8 14.8-2-6-6-2z"/><path d="M10.6 13.4 19.4 4.6"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.6" y="4.6" width="16.8" height="14.8" rx="2.8"/><circle cx="9" cy="9.6" r="1.7"/><path d="M4 17.2l4.6-4.4 3.4 3.2 3-2.8 5 4.4"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.6" r="3.8"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M14 4.6H6.6A1.6 1.6 0 0 0 5 6.2v11.6a1.6 1.6 0 0 0 1.6 1.6H14"/><path d="M10.4 12H20M16.6 8.4 20 12l-3.4 3.6"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5.4 12h13.2"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4.6 19.4l1-4.2L15.8 5a2 2 0 0 1 2.8 0l.4.4a2 2 0 0 1 0 2.8L8.8 18.4z"/><path d="M13.8 7l3.2 3.2"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M13.6 4.6h5.8v5.8M19.4 4.6 11 13"/><path d="M17.4 13.6v4a1.8 1.8 0 0 1-1.8 1.8H6.4a1.8 1.8 0 0 1-1.8-1.8V8.4a1.8 1.8 0 0 1 1.8-1.8h4"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.6v12.8L18.4 12z"/></symbol>
+    <!-- quick-launch glyphs: drawn for the Hub, not anyone's logo -->
+    <symbol id="q-board" viewBox="0 0 24 24"><rect x="3.6" y="4.4" width="16.8" height="11.6" rx="1.8"/><circle cx="12" cy="9" r="1.9"/><path d="M8.8 14.2a3.2 3.2 0 0 1 6.4 0"/><path d="M8 20l1.6-4M16 20l-1.6-4"/></symbol>
+    <symbol id="q-bulb" viewBox="0 0 24 24"><path d="M9 17.4h6M10 20.2h4"/><path d="M12 3.6a5.8 5.8 0 0 0-3.4 10.5c.6.5.9 1.1.9 1.8v1.5h5v-1.5c0-.7.3-1.3.9-1.8A5.8 5.8 0 0 0 12 3.6z"/><path d="M12 7.6v3.2M10.4 9.2h3.2"/></symbol>
+    <symbol id="q-doc" viewBox="0 0 24 24"><path d="M13.6 3.6H7.4A1.8 1.8 0 0 0 5.6 5.4v13.2a1.8 1.8 0 0 0 1.8 1.8h9.2a1.8 1.8 0 0 0 1.8-1.8V8.4z"/><path d="M13.6 3.6v4.8h4.8"/><path d="M8.8 12.4h6.4M8.8 15.6h6.4"/></symbol>
+    <symbol id="q-brush" viewBox="0 0 24 24"><path d="M12 3.6a8.4 8.4 0 1 0 0 16.8c1 0 1.6-.7 1.6-1.5 0-.4-.2-.8-.4-1.1-.3-.3-.4-.6-.4-1 0-.9.7-1.5 1.6-1.5h1.9a4.1 4.1 0 0 0 4.1-4.1c0-4.2-3.8-7.6-8.4-7.6z"/><circle cx="7.8" cy="11.4" r="1.1" fill="currentColor" stroke="none"/><circle cx="10.2" cy="7.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="14.6" cy="7.8" r="1.1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="q-people" viewBox="0 0 24 24"><circle cx="9" cy="8.4" r="3.2"/><path d="M3.4 19a5.6 5.6 0 0 1 11.2 0"/><circle cx="16.8" cy="9.4" r="2.5"/><path d="M15.4 14.2a4.6 4.6 0 0 1 5.4 4.6"/></symbol>
+    <symbol id="q-folder" viewBox="0 0 24 24"><path d="M3.6 7.2a1.8 1.8 0 0 1 1.8-1.8h4.2l2 2.2h7a1.8 1.8 0 0 1 1.8 1.8v8.6a1.8 1.8 0 0 1-1.8 1.8H5.4a1.8 1.8 0 0 1-1.8-1.8z"/></symbol>
+    <symbol id="q-mail" viewBox="0 0 24 24"><rect x="3.6" y="5.6" width="16.8" height="12.8" rx="2.2"/><path d="M4.2 7l7.8 6 7.8-6"/></symbol>
+    <symbol id="q-present" viewBox="0 0 24 24"><rect x="3.6" y="4.4" width="16.8" height="11.6" rx="1.8"/><path d="M12 16v4M8.6 20h6.8"/><path d="M8 12.4l2.6-2.8 2.2 2 3.2-3.6"/></symbol>
+    <symbol id="q-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M3.8 12h16.4M12 3.6c2.4 2.4 3.4 5.2 3.4 8.4s-1 6-3.4 8.4c-2.4-2.4-3.4-5.2-3.4-8.4s1-6 3.4-8.4z"/></symbol>
   </defs>
 </svg>
 
-<canvas id="starfield" aria-hidden="true"></canvas>
-<div class="aurora" aria-hidden="true"><span class="a1"></span><span class="a2"></span><span class="a3"></span></div>
-<div class="planet-wrap" aria-hidden="true">
-  <div class="planet"><i></i></div>
-  <div class="planet-halo"></div>
-</div>
-<div class="scrim" aria-hidden="true"></div>
-<div id="warpFlash" aria-hidden="true"></div>
+<!-- ============================ OPENING INTRO ============================ -->
+<div class="intro" id="intro" role="dialog" aria-modal="true" aria-label="Welcome to the 3CS Class Hub">
+  <button class="intro-skip" id="introSkip" type="button">Skip intro <kbd>Esc</kbd></button>
 
-<button class="edge-planet left" id="edgeLeft" type="button">
-  <span class="ep-orb" aria-hidden="true"><svg class="emblem" viewBox="0 0 48 48"><use href="#e-schedule"></use></svg></span><span class="ep-label"></span>
-</button>
-<button class="edge-planet right" id="edgeRight" type="button">
-  <span class="ep-orb" aria-hidden="true"><svg class="emblem" viewBox="0 0 48 48"><use href="#e-schedule"></use></svg></span><span class="ep-label"></span>
-</button>
-
-<header class="topbar">
-  <div class="topbar-inner">
-    <div class="brand">
-      <div class="mark"><svg class="ic" aria-hidden="true"><use href="#i-mark"></use></svg></div>
+  <section class="scene s1" aria-label="Credits">
+    <div class="s1-eyebrow">A 3CS class project · idea by</div>
+    <h1 class="s1-name" id="introName" aria-label="Joshua Malic">Joshua Malic</h1>
+    <div class="s1-role">Concept Development</div>
+    <div class="s1-note">
+      <svg class="ic" aria-hidden="true"><use href="#i-alert"></use></svg>
       <div>
-        <h1>3CS Class Hub</h1>
-        <div class="sub">Itz'at STEAM Academy &middot; 2026&ndash;2027</div>
+        <b>Heads-up</b>
+        <p>I did <em>not</em> code any of this. I came up with the ideas and helped guide it &mdash; every line of code was written by Claude, an AI.</p>
       </div>
     </div>
+  </section>
+
+  <section class="scene s2" aria-label="Built by Claude">
+    <canvas class="rain" id="introRain" aria-hidden="true"></canvas>
+    <div class="s2-center">
+      <div class="s2-mark" aria-hidden="true">
+        <svg viewBox="0 0 80 80">
+          <path class="br bl" d="M26 22 10 40l16 18"/>
+          <path class="br brr" d="M54 22l16 18-16 18"/>
+          <rect class="caret" x="35" y="48" width="12" height="8" rx="2"/>
+        </svg>
+      </div>
+      <div class="s2-name">Claude</div>
+      <div class="s2-sub">AI model made by Anthropic</div>
+      <div class="s2-role">Wrote every line</div>
+    </div>
+    <div class="editor" aria-hidden="true">
+      <div class="ed-bar"><i></i><i></i><i></i><span>3cs-class-hub / js / today.js</span></div>
+      <pre class="ed-code" id="introCode"></pre>
+      <div class="ed-status" id="introStatus"><span class="spin"></span><span id="introBuild">Building the Hub&hellip;</span></div>
+    </div>
+  </section>
+
+  <section class="scene s3" aria-label="Welcome">
+    <div class="s3-logo" id="introLogo" role="img" aria-label="Itz'at STEAM Academy"></div>
+    <div class="s3-welcome">Welcome to</div>
+    <h1 class="s3-title" id="introTitle" aria-label="3CS">3CS</h1>
+    <div class="s3-sub">Class Hub <i aria-hidden="true"></i> 2026&ndash;2027</div>
+  </section>
+
+  <div class="intro-progress" aria-hidden="true"><i></i></div>
+</div>
+
+<div class="backdrop" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i></div>
+<a class="sr-only" href="#main">Skip to content</a>
+
+<!-- ================================ HEADER =============================== -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="./" id="brandHome" aria-label="3CS Class Hub, home">
+      <span class="mark"><img src="assets/itzat-glyph.svg" alt="" width="30" height="30"></span>
+      <span class="brand-txt"><b><span>3CS</span> Class Hub</b><small>Itz'at STEAM Academy &middot; 2026&ndash;27</small></span>
+    </a>
+
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <span class="tab-ink" id="tabInk" aria-hidden="true"></span>
+      <button type="button" data-tab="schedule" class="active" aria-current="page"><svg class="ic" aria-hidden="true"><use href="#i-home"></use></svg><span class="lbl">Today</span></button>
+      <button type="button" data-tab="work"><svg class="ic" aria-hidden="true"><use href="#i-clipboard"></use></svg><span class="lbl">Work</span></button>
+      <button type="button" data-tab="notebook"><svg class="ic" aria-hidden="true"><use href="#i-notebook"></use></svg><span class="lbl">Notes</span></button>
+      <button type="button" data-tab="help"><svg class="ic" aria-hidden="true"><use href="#i-help"></use></svg><span class="lbl">Help</span></button>
+      <button type="button" data-tab="calendar"><svg class="ic" aria-hidden="true"><use href="#i-calendar"></use></svg><span class="lbl">Calendar</span></button>
+      <button type="button" data-tab="announcements"><svg class="ic" aria-hidden="true"><use href="#i-megaphone"></use></svg><span class="lbl">News</span></button>
+    </nav>
+
     <div class="hdr-right">
+      <button class="icon-btn" id="searchBtn" type="button" aria-label="Search everything"><svg class="ic" aria-hidden="true"><use href="#i-search"></use></svg><kbd>Ctrl K</kbd></button>
+      <button class="icon-btn" id="appsBtn" type="button" aria-label="Quick launch" aria-expanded="false" aria-controls="launcher"><svg class="ic" aria-hidden="true"><use href="#i-grid"></use></svg></button>
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch to dark mode"><svg class="ic moon" aria-hidden="true"><use href="#i-moon"></use></svg><svg class="ic sun" aria-hidden="true"><use href="#i-sun"></use></svg></button>
       <span class="auth-who" id="authWho" hidden></span>
-      <button class="auth-btn" id="authBtn" type="button" hidden>Sign in</button>
-      <button class="admin-toggle admin-only" id="siteEditorBtn" type="button" hidden><svg class="ic" aria-hidden="true"><use href="#i-spark"></use></svg><span>Edit site</span></button>
+      <button class="admin-toggle admin-only" id="siteEditorBtn" type="button" hidden><svg class="ic" aria-hidden="true"><use href="#i-edit"></use></svg><span>Edit site</span></button>
       <button class="admin-toggle" id="adminToggleBtn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-lock"></use></svg><span>Admin</span></button>
+      <button class="me-btn" id="meBtn" type="button" hidden aria-label="Your profile"></button>
+      <button class="auth-btn" id="authBtn" type="button" hidden>Sign in</button>
     </div>
   </div>
-  <nav class="tabs" id="tabs">
-    <button data-tab="schedule" class="active">Schedule</button>
-    <button data-tab="work">Work</button>
-    <button data-tab="notebook">Notebook</button>
-    <button data-tab="help">Help Board</button>
-    <button data-tab="calendar">Calendar</button>
-    <button data-tab="announcements">Announcements</button>
-  </nav>
 </header>
 
 <div id="staticBar" hidden>
   <div class="inner">
     <svg class="ic" aria-hidden="true"><use href="#i-signal-off"></use></svg>
-    <span>Static copy &mdash; the schedule and calendar are live here, but notes, announcements and the help board only work on the
-      <a href="https://claude.ai/artifact/XdRGXjD9BSC45gT919RoTU" target="_blank" rel="noopener">live Hub</a>.</span>
+    <span>Offline copy &mdash; the schedule and calendar work here, but notes, chat and the help board need a connection.</span>
   </div>
 </div>
 
 <div id="globalBanner" hidden>
-  <div class="inner">
-    <span class="tag">Admin notice</span>
-    <div class="txt">
-      <b id="gbTitle">&nbsp;</b>
-      <span id="gbText"></span>
-    </div>
-    <button class="edit-x" id="gbDismissBtn" hidden>Clear</button>
+  <div class="inner" role="status">
+    <span class="tag">Notice</span>
+    <div class="txt"><b id="gbTitle">&nbsp;</b><span id="gbText"></span></div>
+    <button class="edit-x" id="gbDismissBtn" type="button" hidden>Clear</button>
   </div>
 </div>
 
-<main class="wrap">
+<main class="wrap" id="main">
 
   <div class="hero" id="hero">
-    <div class="hero-emblem"><svg class="emblem" viewBox="0 0 48 48" id="heroEmblemUse"><use href="#e-schedule"></use></svg></div>
-    <div class="hero-eyebrow" id="heroEyebrow">&nbsp;</div>
-    <h1 class="hero-word" id="heroWord"></h1>
-    <p class="hero-sub" id="heroSub"></p>
+    <div class="hero-main">
+      <div class="hero-emblem" aria-hidden="true"><svg class="emblem" viewBox="0 0 48 48" id="heroEmblemUse"><use href="#e-schedule"></use></svg></div>
+      <div class="hero-text">
+        <div class="hero-eyebrow" id="heroEyebrow">&nbsp;</div>
+        <h1 class="hero-word" id="heroWord"></h1>
+        <p class="hero-sub" id="heroSub"></p>
+      </div>
+      <div class="hero-cta" id="heroCta"><button class="btn ghost sm" id="heroCtaBtn" type="button">Today&rsquo;s classes</button></div>
+    </div>
     <div class="mode-flag" id="modeFlag" hidden></div>
-    <div class="hero-cta" id="heroCta"><button class="btn glow" id="heroCtaBtn">See today&rsquo;s classes</button></div>
+    <div class="day-bar" id="dayBar" hidden></div>
     <div class="now-strip" id="nowStrip"></div>
   </div>
 
-  <!-- SCHEDULE (main tab) -->
-  <section class="panel active" id="tab-schedule">
-    <div class="stack">
-
-      <div class="card" id="lineupCard">
-        <span class="eyebrow">Today&rsquo;s line-up</span>
-        <h2 id="lineupTitle">Six sessions</h2>
-        <p class="hint" id="lineupMode"></p>
-        <div class="lineup" id="lineup"></div>
-      </div>
-
-      <div class="card" id="nextDayCard" hidden>
-        <div class="nd-head">
-          <div>
-            <span class="eyebrow">Pack for next</span>
-            <h2 id="nextDayWhen">&mdash;</h2>
+  <!-- TODAY -->
+  <section class="panel active" id="tab-schedule" aria-label="Today">
+    <div class="today-grid">
+      <div class="today-main stack">
+        <div class="card" id="lineupCard">
+          <div class="card-head">
+            <div>
+              <span class="eyebrow">Today&rsquo;s line-up</span>
+              <h2 id="lineupTitle">Six sessions</h2>
+              <p class="hint" id="lineupMode" style="margin:0"></p>
+            </div>
           </div>
-          <span class="badge subj" id="nextDayMode"></span>
+          <div class="lineup" id="lineup"></div>
         </div>
-        <div class="nd-row" id="nextDayRow"></div>
+
+        <div class="card" id="nextDayCard" hidden>
+          <div class="nd-head">
+            <div>
+              <span class="eyebrow">Pack for next</span>
+              <h2 id="nextDayWhen">&mdash;</h2>
+            </div>
+            <span class="badge subj" id="nextDayMode"></span>
+          </div>
+          <div class="nd-row" id="nextDayRow"></div>
+        </div>
       </div>
 
+      <aside class="today-side stack" aria-label="Shortcuts">
+        <div class="card" id="quickCard">
+          <div class="card-head">
+            <div>
+              <span class="eyebrow">Quick launch</span>
+              <h2>Open an app</h2>
+            </div>
+          </div>
+          <div class="quick-grid" id="quickLinks"></div>
+          <div class="quick-foot">
+            <span class="hint" style="margin:0">Opens in a new tab</span>
+            <button class="linkbtn" id="quickEditBtn" type="button">Edit</button>
+          </div>
+        </div>
+
+        <div class="card" id="dueCard">
+          <div class="card-head">
+            <div>
+              <span class="eyebrow">Due soon</span>
+              <h2 id="dueTitle">What&rsquo;s next</h2>
+            </div>
+            <button class="linkbtn" id="dueAllBtn" type="button">All work</button>
+          </div>
+          <div class="due-list" id="dueSoon"></div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="stack">
       <div class="card">
-        <span class="eyebrow">The main event</span>
-        <h2>3CS Weekly Rotation</h2>
-        <p class="hint">Itz'at runs on a 7‑day cycle, not a Mon&ndash;Fri week &mdash; check the Calendar tab to see which "Day" falls on which date. Today's day is outlined below when school's in session.</p>
-        <div class="sched-scroll">
+        <span class="eyebrow">The rotation</span>
+        <h2>3CS weekly timetable</h2>
+        <p class="hint">Itz'at runs on a 7-day cycle, not a Mon&ndash;Fri week &mdash; the Calendar shows which Day lands on which date. Today's Day is highlighted.</p>
+        <div class="sched-scroll" tabindex="0" role="region" aria-label="Weekly timetable, scrolls sideways">
           <table class="sched" id="schedTable"></table>
         </div>
         <p class="hint" id="rotationNote" style="margin-top:10px;"></p>
@@ -272,63 +417,61 @@
       <div class="card">
         <span class="eyebrow">Reference</span>
         <h2>Bell schedule</h2>
-        <div class="row" id="bellSchedules" style="align-items:flex-start;"></div>
+        <div class="row" id="bellSchedules" style="align-items:flex-start;margin-top:12px;"></div>
       </div>
 
       <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+        <div class="card-head">
           <div>
             <span class="eyebrow">Subject key</span>
             <h2>What the codes mean</h2>
-            <p class="hint">Some subject codes are confirmed; the rest are left blank rather than guessed &mdash; an admin can fill them in.</p>
+            <p class="hint" style="margin:0">Confirmed codes are filled in; the rest are left blank rather than guessed.</p>
           </div>
-          <button class="btn ghost admin-only" id="legendEditBtn" hidden>Edit</button>
+          <button class="btn ghost sm admin-only" id="legendEditBtn" type="button" hidden>Edit</button>
         </div>
         <div class="legend-grid" id="legendGrid"></div>
         <div class="status-line" id="legendStatus"></div>
       </div>
-
     </div>
   </section>
 
   <!-- CALENDAR -->
-  <section class="panel" id="tab-calendar">
+  <section class="panel" id="tab-calendar" aria-label="Calendar">
     <div class="card">
       <div class="cal-head">
         <div>
-          <span class="eyebrow">Full year</span>
           <h2 class="cal-title" id="calTitle">&mdash;</h2>
         </div>
         <div class="cal-nav">
           <button id="calPrev" type="button" aria-label="Previous month"><svg class="ic" aria-hidden="true"><use href="#i-chev-l"></use></svg></button>
-          <button id="calToday" type="button" style="width:auto;padding:0 12px;">Today</button>
+          <button id="calToday" type="button">Today</button>
           <button id="calNext" type="button" aria-label="Next month"><svg class="ic" aria-hidden="true"><use href="#i-chev-r"></use></svg></button>
         </div>
       </div>
       <div class="cal-grid" id="calDow"></div>
       <div class="cal-grid" id="calGrid" style="margin-top:6px;"></div>
       <div class="cal-legend">
-        <span><span class="sw" style="background:color-mix(in srgb, var(--urgent) 40%, var(--surface-2));"></span>Holiday / no school</span>
-        <span><span class="sw" style="background:color-mix(in srgb, var(--accent) 40%, var(--surface-2));"></span>Asynchronous day</span>
-        <span><span class="sw" style="background:var(--amber);"></span>Quick exit / half day</span>
-        <span><span class="sw" style="box-shadow:0 0 0 2px var(--today-ring); background:var(--surface-2);"></span>Today</span>
+        <span><span class="sw" style="background:color-mix(in srgb, var(--urgent) 30%, var(--surface));"></span>Holiday / no school</span>
+        <span><span class="sw" style="background:color-mix(in srgb, var(--blue) 30%, var(--surface));"></span>Asynchronous day</span>
+        <span><span class="sw" style="background:color-mix(in srgb, var(--amber) 50%, var(--surface));"></span>Quick exit / half day</span>
+        <span><span class="sw" style="box-shadow:0 0 0 2px var(--today-ring); background:var(--surface);"></span>Today</span>
       </div>
     </div>
   </section>
 
   <!-- ANNOUNCEMENTS -->
-  <section class="panel" id="tab-announcements">
+  <section class="panel" id="tab-announcements" aria-label="Announcements">
     <div class="stack">
       <div class="card admin-only" id="globalComposerCard" hidden>
-        <span class="eyebrow" style="color:var(--urgent)">Admin &middot; sitewide banner</span>
-        <h2>Global announcement</h2>
-        <p class="hint">This pins a banner at the top of every tab for everyone. Use it for things like closures or schedule changes &mdash; clear it once it's no longer current.</p>
+        <span class="eyebrow">Admin &middot; sitewide banner</span>
+        <h2>Banner for everyone</h2>
+        <p class="hint">Shows at the top of every page. Use it for closures or schedule changes, and clear it when it's done.</p>
         <div class="composer">
-          <input id="gbTitleInput" placeholder="Short headline, e.g. “Early dismissal today”" style="border:1px solid var(--border);border-radius:10px;padding:9px 12px;background:var(--surface-2);color:var(--ink);font:inherit;">
-          <textarea id="gbTextInput" placeholder="Details for the banner..."></textarea>
-          <div class="row">
-            <button class="btn" id="gbSaveBtn">Publish banner</button>
-            <button class="btn ghost" id="gbClearBtn">Clear banner</button>
+          <input id="gbTitleInput" placeholder="Short headline, e.g. “Early dismissal today”" aria-label="Banner headline">
+          <textarea id="gbTextInput" placeholder="Details for the banner…" aria-label="Banner details"></textarea>
+          <div class="btn-row">
+            <button class="btn" id="gbSaveBtn" type="button">Publish banner</button>
+            <button class="btn ghost" id="gbClearBtn" type="button">Clear banner</button>
           </div>
           <div class="status-line" id="gbStatus"></div>
         </div>
@@ -338,9 +481,9 @@
         <span class="eyebrow">Admin</span>
         <h2>Post an announcement</h2>
         <div class="composer">
-          <textarea id="announceInput" placeholder="What's the class need to know?"></textarea>
-          <div class="row" style="align-items:center;">
-            <button class="btn" id="announcePostBtn">Post</button>
+          <textarea id="announceInput" placeholder="What does the class need to know?" aria-label="Announcement"></textarea>
+          <div class="btn-row">
+            <button class="btn" id="announcePostBtn" type="button">Post</button>
             <label class="checkline"><input type="checkbox" id="announcePin"> Pin to top</label>
           </div>
           <div class="status-line" id="announceStatus"></div>
@@ -350,55 +493,52 @@
       <div class="card">
         <span class="eyebrow">Class feed</span>
         <h2>Announcements</h2>
-        <div class="stack" id="announceList" style="margin-top:10px;"></div>
+        <div class="stack" id="announceList" style="margin-top:12px;gap:10px;"></div>
         <div class="status-line" id="feedStatus"></div>
       </div>
     </div>
   </section>
 
-  <!-- NOTEBOOK -->
-  <section class="panel" id="tab-work">
+  <!-- WORK -->
+  <section class="panel" id="tab-work" aria-label="Work">
     <div class="stack">
-
       <div class="card" id="workIntroCard">
-        <p class="hint" id="workIntro">Everything the class has been set, in the order it's due. Ticking something off is private to you &mdash; nobody else sees your list, not even an admin.</p>
-
-        <div class="work-actions admin-only" hidden>
-          <button class="btn sm" id="workAddBtn"><svg class="ic" aria-hidden="true"><use href="#i-plus"></use></svg> Add assignment</button>
-          <button class="btn ghost sm" id="workSyncBtn"><svg class="ic" aria-hidden="true"><use href="#i-cloud"></use></svg> <span id="workSyncLabel">Connect Google Classroom</span></button>
+        <p class="hint" id="workIntro">Anyone signed in can add an assignment, and whoever posted it (or an admin) can fix it. Your ticks are private &mdash; nobody else sees your list, not even an admin.</p>
+        <div class="work-actions">
+          <button class="btn sm" id="workAddBtn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-plus"></use></svg> Add assignment</button>
+          <button class="btn ghost sm admin-only" id="workSyncBtn" type="button" hidden><svg class="ic" aria-hidden="true"><use href="#i-cloud"></use></svg> <span id="workSyncLabel">Connect Google Classroom</span></button>
         </div>
         <div class="status-line" id="workSyncStatus"></div>
         <div class="sync-preview" id="workSyncPreview" hidden></div>
       </div>
 
       <div class="card">
-        <div class="toolbar">
-          <div class="chip-row" id="workFilters"></div>
-          <label class="checkline compact"><input type="checkbox" id="workHideDone" checked> Hide what I've finished</label>
+        <div class="toolbar" style="margin-top:0">
+          <div class="chip-row" id="workFilters" style="margin-top:0"></div>
+          <label class="checkline compact" style="margin-left:auto"><input type="checkbox" id="workHideDone" checked> Hide what I've finished</label>
         </div>
         <div class="work-list" id="workList"></div>
         <div class="status-line" id="workStatus"></div>
       </div>
-
     </div>
   </section>
 
-  <section class="panel" id="tab-notebook">
+  <!-- NOTEBOOK -->
+  <section class="panel" id="tab-notebook" aria-label="Class notebook">
     <div class="stack">
       <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+        <div class="card-head">
           <div>
-            <span class="eyebrow">Shared by the class</span>
-            <h2>Class Notebook</h2>
-            <p id="notebookNote" style="margin:4px 0 0;">Notes, resources, and study material for 3CS &mdash; anyone in the class can add a page.</p>
+            <h2>Browse the notebook</h2>
+            <p id="notebookNote" class="hint" style="margin:2px 0 0;">Notes, resources and study material for 3CS &mdash; anyone in the class can add a page.</p>
           </div>
-          <button class="btn" id="noteNewBtn">+ New note</button>
+          <button class="btn" id="noteNewBtn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-plus"></use></svg> New note</button>
         </div>
 
         <div class="admin-only" id="notebookEditWrap" hidden style="margin-top:12px;">
           <div class="composer">
-            <textarea id="notebookInput" placeholder="Intro line shown at the top of this tab"></textarea>
-            <button class="btn sm" id="notebookSaveBtn" style="align-self:flex-start;">Save intro</button>
+            <textarea id="notebookInput" placeholder="Intro line shown at the top of this tab" aria-label="Notebook intro"></textarea>
+            <button class="btn sm" id="notebookSaveBtn" type="button">Save intro</button>
             <div class="status-line" id="notebookStatus"></div>
           </div>
         </div>
@@ -408,7 +548,7 @@
             <svg class="ic" aria-hidden="true"><use href="#i-search"></use></svg>
             <input id="noteSearch" type="search" placeholder="Search notes by title or content" aria-label="Search notes">
           </label>
-          <button class="btn ghost sm" id="noteOpenLinkBtn">Open by link</button>
+          <button class="btn ghost sm" id="noteOpenLinkBtn" type="button">Open by link</button>
         </div>
         <div class="chips" id="noteSubjectChips"></div>
         <div class="chips" id="noteVisChips"></div>
@@ -425,12 +565,10 @@
   </section>
 
   <!-- HELP BOARD -->
-  <section class="panel" id="tab-help">
+  <section class="panel" id="tab-help" aria-label="Help board">
     <div class="stack">
       <div class="card">
-        <span class="eyebrow">Ask &middot; answer &middot; remind</span>
-        <h2>Help &amp; Reminders</h2>
-        <p class="hint">Stuck on something, or need the class to remember something? Post it here and anyone can answer.</p>
+        <h2>Ask the class</h2>
 
         <div class="composer" style="margin-top:14px;">
           <div class="grid-2">
@@ -446,10 +584,10 @@
               <select id="postSubject"></select>
             </label>
           </div>
-          <textarea id="postInput" placeholder="e.g. Does anyone remember which pages of the M homework are due Day 4?"></textarea>
+          <textarea id="postInput" placeholder="e.g. Does anyone remember which pages of the M homework are due Day 4?" aria-label="Your post"></textarea>
           <div class="btn-row">
-            <button class="btn" id="postBtn">Post to board</button>
-            <span class="hint">Posting as <button class="linkbtn" id="postAsBtn">someone</button></span>
+            <button class="btn" id="postBtn" type="button">Post to board</button>
+            <span class="hint">Posting as <button class="linkbtn" id="postAsBtn" type="button">someone</button></span>
           </div>
         </div>
       </div>
@@ -459,7 +597,7 @@
         <div class="chips" id="postSubjectChips"></div>
       </div>
 
-      <div class="stack" id="postList"></div>
+      <div class="stack" id="postList" style="gap:12px"></div>
       <div class="card empty-state" id="postEmpty" hidden></div>
 
       <div class="trust">
@@ -471,19 +609,48 @@
 
 </main>
 
+<footer class="site-foot">
+  <div class="credits">
+    <img src="assets/itzat-glyph.svg" alt="" width="26" height="26">
+    <span>3CS Class Hub &middot; Itz'at STEAM Academy 2026&ndash;2027 &middot; Concept by Joshua Malic &middot; Code written by Claude (AI)</span>
+  </div>
+  <button class="linkbtn" id="replayIntroBtn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-play"></use></svg> Replay intro</button>
+</footer>
+
 <div id="toast" role="status" aria-live="polite"></div>
-<div class="kbd-hint" id="kbdHint"><b>ctrl</b>+<b>K</b> search anything &middot; <b>1</b>&ndash;<b>6</b> jump between worlds</div>
+<div class="kbd-hint" id="kbdHint" aria-hidden="true"><b>Ctrl</b> <b>K</b> search &middot; <b>1</b>&ndash;<b>6</b> switch sections</div>
 
-<footer>3CS Class Hub &middot; built from the official Itz'at STEAM Academy 2026&ndash;2027 calendar &middot; last synced content may lag live edits by a moment</footer>
+<!-- ================================= CHAT ================================ -->
+<button class="chat-fab" id="chatFab" type="button" aria-label="Open class chat" aria-expanded="false" aria-controls="chatPanel">
+  <svg class="ic" aria-hidden="true"><use href="#i-msg"></use></svg><span class="lbl">Class chat</span>
+  <span class="chat-badge" id="chatBadge" hidden>0</span>
+</button>
+<aside class="chat-panel" id="chatPanel" hidden role="dialog" aria-labelledby="chatTitle">
+  <div class="chat-head">
+    <div class="chat-faces" id="chatFaces" aria-hidden="true"></div>
+    <div class="grow">
+      <h2 id="chatTitle">Class chat</h2>
+      <p id="chatSub">Everyone in 3CS &middot; be kind</p>
+    </div>
+    <button class="sheet-close" id="chatClose" type="button" aria-label="Close chat"><svg class="ic" aria-hidden="true"><use href="#i-close"></use></svg></button>
+  </div>
+  <div class="chat-list" id="chatList" role="log" aria-live="polite" aria-label="Messages"></div>
+  <div class="chat-gate" id="chatGate" hidden><span>Sign in to join the conversation.</span><button class="btn sm js-signin" type="button">Sign in</button></div>
+  <form class="chat-compose" id="chatForm" autocomplete="off">
+    <textarea id="chatInput" rows="1" maxlength="800" placeholder="Message 3CS…" aria-label="Message"></textarea>
+    <button class="chat-send" id="chatSend" type="submit" aria-label="Send message" disabled><svg class="ic" aria-hidden="true"><use href="#i-send"></use></svg></button>
+  </form>
+</aside>
 
+<!-- ================================ SHEETS =============================== -->
 <div class="sheet" id="authSheet" hidden>
-  <div class="box auth-box">
+  <div class="box auth-box" role="dialog" aria-modal="true" aria-labelledby="authSheetTitle">
     <div class="sheet-head">
       <div>
         <h2 id="authSheetTitle">Sign in</h2>
         <p class="hint" id="authSheetSub">Use your school email, or continue with Google if your account allows it.</p>
       </div>
-      <button class="sheet-close" id="authSheetClose" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"></use></svg></button>
+      <button class="sheet-close" id="authSheetClose" type="button" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"></use></svg></button>
     </div>
 
     <button class="btn google-btn" id="authGoogleBtn" type="button">
@@ -514,7 +681,7 @@
     <div class="status-line" id="authErr"></div>
     <p class="hint auth-note" id="authNote" hidden></p>
 
-    <button class="btn" id="authGoBtn" type="button" style="width:100%;margin-top:4px;">Sign in</button>
+    <button class="btn" id="authGoBtn" type="button">Sign in</button>
 
     <div class="auth-links">
       <button class="linkbtn" id="authSwapBtn" type="button">New here? Create an account</button>
@@ -526,43 +693,41 @@
 </div>
 
 <div class="sheet" id="workSheet" hidden>
-  <div class="box">
+  <div class="box" role="dialog" aria-modal="true" aria-labelledby="workSheetTitle">
     <div class="sheet-head">
       <h2 id="workSheetTitle">New assignment</h2>
-      <button class="sheet-close" id="workSheetClose" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"></use></svg></button>
+      <button class="sheet-close" id="workSheetClose" type="button" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"></use></svg></button>
     </div>
     <div class="grid-2">
-      <label class="field"><span>Title</span><input id="workTitle" type="text" placeholder="Chapter 7 questions"></label>
+      <label class="field"><span>Title</span><input id="workTitle" type="text" maxlength="300" placeholder="Chapter 7 questions"></label>
       <label class="field"><span>Subject</span><select id="workSubject"></select></label>
     </div>
     <div class="grid-2">
       <label class="field"><span>Due</span><input id="workDue" type="date"></label>
       <label class="field"><span>Time (optional)</span><input id="workDueTime" type="time"></label>
     </div>
-    <label class="field"><span>Details</span><textarea id="workDetail" placeholder="What has to be handed in, and anything the class should know."></textarea></label>
-    <label class="field"><span>Link (optional)</span><input id="workLink" type="url" placeholder="https://"></label>
+    <label class="field"><span>Details</span><textarea id="workDetail" maxlength="5000" placeholder="What has to be handed in, and anything the class should know."></textarea></label>
+    <label class="field"><span>Link (optional)</span><input id="workLink" type="url" maxlength="600" placeholder="https://"></label>
     <div class="sheet-actions">
-      <button class="btn ghost sm" id="workDeleteBtn" hidden>Delete</button>
-      <button class="btn" id="workSaveBtn">Post to the class</button>
+      <button class="btn ghost sm" id="workDeleteBtn" type="button" hidden>Delete</button>
+      <button class="btn" id="workSaveBtn" type="button">Post to the class</button>
     </div>
   </div>
 </div>
 
-<!-- Admin sheet -->
 <div class="admin-sheet" id="adminSheet" hidden>
-  <div class="box">
-    <button class="close" id="adminSheetClose" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"></use></svg></button>
-    <h3><svg class="ic" aria-hidden="true"><use href="#i-lock"></use></svg> Admin mode</h3>
+  <div class="box" role="dialog" aria-modal="true" aria-labelledby="adminSheetHead">
+    <button class="close" id="adminSheetClose" type="button" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"></use></svg></button>
+    <h3 id="adminSheetHead"><svg class="ic" aria-hidden="true"><use href="#i-lock"></use></svg> Admin mode</h3>
 
     <div id="adminLocked">
       <p>Enter the admin passcode to reveal the editing controls on this device.</p>
       <label class="field" style="margin-top:14px;">
         <span>Passcode</span>
-        <input id="adminPass" type="password" inputmode="numeric" autocomplete="off"
-               maxlength="12" placeholder="******">
+        <input id="adminPass" type="password" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="******">
       </label>
       <div class="status-line err" id="adminPassErr"></div>
-      <button class="btn" id="adminUnlockBtn" style="width:100%;margin-top:10px;">Unlock</button>
+      <button class="btn" id="adminUnlockBtn" type="button" style="width:100%;margin-top:10px;">Unlock</button>
     </div>
 
     <div id="adminUnlocked" hidden>
@@ -571,14 +736,15 @@
         <input type="checkbox" id="adminModeCheck"> Show edit controls on this device
       </label>
       <div class="btn-row">
-        <button class="btn" id="adminSheetOk" style="flex:1;">Done</button>
-        <button class="btn ghost sm" id="adminLockBtn">Lock again</button>
+        <button class="btn" id="adminSheetOk" type="button" style="flex:1;">Done</button>
+        <button class="btn ghost sm" id="adminLockBtn" type="button">Lock again</button>
       </div>
     </div>
 
-    <p class="hint" style="margin-top:16px;">The passcode keeps the edit buttons out of the way of the class &mdash; it is a lock on the <em>interface</em>, not on the data. Anyone determined enough to read the page's code can get past it. What actually decides whether a save goes through is this Hub's sharing permission: the owner shares it with someone as <strong>can edit</strong> to make them a real admin.</p>
+    <p class="hint" style="margin-top:16px;">The passcode keeps the edit buttons out of the way &mdash; it's a lock on the <em>interface</em>, not on the data. What actually decides whether a save goes through is the server's permissions.</p>
   </div>
 </div>
+
 <script>
   /* ------------------------------------------------------------------
      PASTE YOUR FIREBASE CONFIG HERE.

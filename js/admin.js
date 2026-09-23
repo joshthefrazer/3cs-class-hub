@@ -4,7 +4,7 @@ import { calCursor, setCalCursor, renderCalendar } from "./cal.js";
 import { MONTHS } from "./data.js";
 import { postHelp, renderHelp } from "./help.js";
 import { openByLinkSheet, openNoteById, openNoteEditor, renderNotebook, renderNotebookIntro, saveNotebookIntro } from "./notebook.js";
-import { REDUCED, Sky, WORLD, renderHero, updateEdgePlanets, warpTo } from "./orbit.js";
+import { REDUCED, renderHero, renderDayBar, updateTabInk, warpTo } from "./orbit.js";
 import { renderLegend, saveLegend } from "./sched.js";
 import { ADMIN_HASH, hashPass, paintAdminSheet, setAdminUnlocked, state } from "./state.js";
 import { openNameSheet, svgIcon } from "./text.js";
@@ -82,18 +82,21 @@ function checkNoteHash(){
 function setTab(name){
   state.tab = name;
   document.querySelectorAll("nav.tabs button").forEach(function(b){
-    b.classList.toggle("active", b.getAttribute("data-tab")===name);
+    var on = b.getAttribute("data-tab")===name;
+    b.classList.toggle("active", on);
+    if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   });
   document.querySelectorAll("section.panel").forEach(function(s){
     s.classList.toggle("active", s.id==="tab-"+name);
   });
   document.body.setAttribute("data-world", name);
-  document.body.classList.toggle("compact-world", name !== "schedule");
   if (name === "work"){ renderWorkFilters(); renderWork(); }
-  if (WORLD[name]) Sky.tint(WORLD[name].a);
-  updateEdgePlanets(name);
+  updateTabInk();
   renderHero(name);
-  replayReveal();
+  if (name === "schedule") renderDayBar();
+  /* During a view transition the new panel slides in whole; the staggered
+     reveal is for the plain fallback. */
+  if (!document.documentElement.classList.contains("vt-active")) replayReveal();
   try{ sessionStorage.setItem("3cs_tab", name); }catch(e){}
 }
 
@@ -106,11 +109,10 @@ function wire(){
     var btn = e.target.closest("button[data-tab]");
     if (btn) warpTo(btn.getAttribute("data-tab"));
   });
-  ["edgeLeft","edgeRight"].forEach(function(id){
-    document.getElementById(id).addEventListener("click", function(){
-      warpTo(this.getAttribute("data-go"));
-    });
-  });
+  var brand = document.getElementById("brandHome");
+  if (brand) brand.addEventListener("click", function(e){ e.preventDefault(); warpTo("schedule"); });
+  var dueAll = document.getElementById("dueAllBtn");
+  if (dueAll) dueAll.addEventListener("click", function(){ warpTo("work"); });
   document.getElementById("heroCtaBtn").addEventListener("click", function(){
     var card = document.getElementById("lineupCard");
     if (card) card.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block:"start" });
@@ -126,7 +128,10 @@ function wire(){
   }
 
   var addW = document.getElementById("workAddBtn");
-  if (addW) addW.addEventListener("click", function(){ openWorkSheet(null); });
+  if (addW) addW.addEventListener("click", function(){
+    if (usingFirebase() && !BE.user){ openAuthSheet(); return; }
+    openWorkSheet(null);
+  });
   var closeW = document.getElementById("workSheetClose");
   if (closeW) closeW.addEventListener("click", closeWorkSheet);
   var saveW = document.getElementById("workSaveBtn");

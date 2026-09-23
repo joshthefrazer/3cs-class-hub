@@ -3,7 +3,7 @@ import {
   requireDb, signedIn, toast, usingFirebase
 } from "./backend.js";
 import { state } from "./state.js";
-import { esc, svgIcon } from "./text.js";
+import { esc, safeUrl, svgIcon } from "./text.js";
 import { subjectCodes, subjectLabel } from "./sched.js";
 import { renderNowStrip } from "./orbit.js";
 
@@ -258,10 +258,11 @@ function workCard(a, bk){
     src.innerHTML = svgIcon("i-cloud") + "<span>" + esc(a.courseName) + "</span>";
     meta.appendChild(src);
   }
-  if (a.link){
+  var href = safeUrl(a.link);
+  if (href){
     var lk = document.createElement("a");
     lk.className = "linkbtn";
-    lk.href = a.link;
+    lk.href = href;
     lk.target = "_blank";
     lk.rel = "noopener";
     lk.innerHTML = svgIcon("i-link") + "<span>Open</span>";
@@ -369,6 +370,8 @@ function saveWork(){
   if (!signedIn()){ toast("Sign in first.", true); return; }
   var title = document.getElementById("workTitle").value.trim();
   if (!title){ toast("Give it a title.", true); return; }
+  var rawLink = document.getElementById("workLink").value.trim();
+  if (rawLink && !safeUrl(rawLink)){ toast("That link needs to be a normal web address (https://…).", true); return; }
   var date = document.getElementById("workDue").value;
   var time = document.getElementById("workDueTime").value;
 
@@ -377,7 +380,7 @@ function saveWork(){
     subject: document.getElementById("workSubject").value || "",
     due: date ? (time ? date + "T" + time : date) : "",
     detail: document.getElementById("workDetail").value.trim(),
-    link: document.getElementById("workLink").value.trim(),
+    link: safeUrl(document.getElementById("workLink").value),
     updatedAt: new Date().toISOString()
   };
 
@@ -410,10 +413,55 @@ function deleteWork(){
    row; this just asks for a repaint when the numbers change. */
 function paintWorkChip(){
   try{ renderNowStrip(); }catch(e){}
+  renderDueSoon();
+}
+
+/* ------------------------------------------------------- due soon card --- */
+
+/* The Today sidebar: the next few things you haven't finished, nearest
+   first, so the front page answers "what do I have to do" without a click. */
+var MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function renderDueSoon(){
+  var box = document.getElementById("dueSoon");
+  if (!box) return;
+  var title = document.getElementById("dueTitle");
+  box.innerHTML = "";
+  if (usingFirebase() && !BE.user){
+    box.innerHTML = '<p class="hint" style="margin:0">Sign in to see what the class has due.</p>' +
+      '<button class="btn sm js-signin" type="button" style="margin-top:10px">Sign in</button>';
+    if (title) title.textContent = "What's next";
+    return;
+  }
+  var soon = assignments().filter(function(a){
+    if (isDone(a)) return false;
+    var k = bucketOf(a);
+    return k === "overdue" || k === "today" || k === "tomorrow" || k === "week";
+  }).sort(function(a, b){ return dueDate(a) - dueDate(b); });
+  if (title) title.textContent = soon.length ? soon.length + (soon.length === 1 ? " thing this week" : " things this week") : "You're all caught up";
+  if (!soon.length){
+    box.innerHTML = '<p class="hint" style="margin:0">' + (!state.workLoaded && !state.standalone ? "Loading…" : "Nothing due in the next seven days. Enjoy it.") + '</p>';
+    return;
+  }
+  soon.slice(0, 5).forEach(function(a){
+    var d = dueDate(a), k = bucketOf(a);
+    var row = document.createElement("button");
+    row.type = "button";
+    row.className = "due-row" + (k === "overdue" ? " bad" : k === "today" ? " hot" : "");
+    row.innerHTML =
+      '<span class="dd"><b>' + d.getDate() + '</b><span>' + MON[d.getMonth()] + '</span></span>' +
+      '<span class="dt"><strong></strong><small></small></span>';
+    row.querySelector("strong").textContent = a.title || "Untitled";
+    row.querySelector("small").textContent = [a.subject, duePhrase(a)].filter(Boolean).join(" · ");
+    row.addEventListener("click", function(){
+      var t = document.querySelector('nav.tabs button[data-tab="work"]');
+      if (t) t.click();
+    });
+    box.appendChild(row);
+  });
 }
 
 export {
-  renderWork, renderWorkFilters, workSummary, paintWorkChip, openWorkSheet,
+  renderWork, renderWorkFilters, renderDueSoon, workSummary, paintWorkChip, openWorkSheet,
   closeWorkSheet, saveWork, deleteWork, toggleDone, loadLocalDone,
   dueDate, duePhrase, bucketOf, assignments, isDone, visibleWork
 };

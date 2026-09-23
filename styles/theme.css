@@ -1,0 +1,221 @@
+/* ===================================================================
+   3CS CLASS HUB — theme
+   Purple, white and orange, with blue as the third voice. Light by default,
+   with a dark switch. Every colour lives here as a token; nothing further
+   down the cascade hard-codes one, so both themes stay in step.
+   =================================================================== */
+
+:root{
+  color-scheme: light;
+
+  --bg:#F7F5FD;
+  --surface:#FFFFFF;
+  --surface-2:#F2EEFC;
+  --surface-3:#EAE4FA;
+  --ink:#1C1433;
+  --ink-dim:#463E62;
+  --muted:#6A6386;
+  --edge:#E4DEF3;
+  --edge-soft:#EEEAF8;
+  --border:var(--edge);
+
+  --purple:#6A3DE8;   --purple-text:#5B2FD6;
+  --orange:#F26B1D;   --orange-text:#B84808;
+  --blue:#2F6BEF;     --blue-text:#1F55CF;
+  --urgent:#C8203F;
+  --good:#0F7A50;
+  --amber:#F4A340;
+  --on-accent:#FFFFFF;
+  --purple-fill:#6A3DE8; --orange-fill:#C24E0B; --blue-fill:#2A62E6;
+  --on-fill:#FFFFFF;
+
+  /* the section you're on — swapped per tab below */
+  --accent:var(--purple);
+  --accent-text:var(--purple-text);
+  --fill:var(--purple-fill);
+  --accent-2:var(--orange);
+  --today-ring:var(--orange);
+
+  --shadow-sm:0 1px 2px rgba(28,20,51,.05), 0 2px 8px -4px rgba(76,44,160,.10);
+  --shadow:0 1px 2px rgba(28,20,51,.04), 0 14px 34px -18px rgba(76,44,160,.26);
+  --shadow-lg:0 2px 6px rgba(28,20,51,.06), 0 34px 70px -30px rgba(60,30,140,.42);
+  --glass:rgba(255,255,255,.72);
+  --scrim:rgba(28,18,58,.38);
+
+  --blob-1:rgba(122,76,255,.20);
+  --blob-2:rgba(255,128,56,.16);
+  --blob-3:rgba(64,120,255,.14);
+
+  --ease:cubic-bezier(.3,.7,.2,1);
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+  --radius:20px;
+  --radius-sm:12px;
+
+  --font:"Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+
+  --header-h:68px;
+  --bottom-h:0px;
+}
+
+/* Dark: chosen explicitly, or following the device when nothing is chosen. */
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0F0B1D; --surface:#171229; --surface-2:#201938; --surface-3:#2A2248;
+  --ink:#F3F0FF; --ink-dim:#CFC8EA; --muted:#A29BC2;
+  --edge:#2F2752; --edge-soft:#251E42;
+  --purple:#9C80FF; --purple-text:#B5A0FF;
+  --orange:#FF8B45; --orange-text:#FF9F63;
+  --blue:#6E9BFF;   --blue-text:#8FB2FF;
+  --urgent:#FF6B84; --good:#3DD69A; --amber:#FFB85C;
+  --on-accent:#140F29;
+  --purple-fill:#9C80FF; --orange-fill:#FF8B45; --blue-fill:#6E9BFF;
+  --on-fill:#140F29;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 18px 40px -22px rgba(0,0,0,.8);
+  --shadow-lg:0 2px 8px rgba(0,0,0,.4), 0 40px 80px -30px rgba(0,0,0,.9);
+  --glass:rgba(23,18,41,.72);
+  --scrim:rgba(6,4,14,.62);
+  --blob-1:rgba(124,88,255,.22);
+  --blob-2:rgba(255,120,50,.12);
+  --blob-3:rgba(60,110,255,.14);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#0F0B1D; --surface:#171229; --surface-2:#201938; --surface-3:#2A2248;
+    --ink:#F3F0FF; --ink-dim:#CFC8EA; --muted:#A29BC2;
+    --edge:#2F2752; --edge-soft:#251E42;
+    --purple:#9C80FF; --purple-text:#B5A0FF;
+    --orange:#FF8B45; --orange-text:#FF9F63;
+    --blue:#6E9BFF;   --blue-text:#8FB2FF;
+    --urgent:#FF6B84; --good:#3DD69A; --amber:#FFB85C;
+    --on-accent:#140F29;
+  --purple-fill:#9C80FF; --orange-fill:#FF8B45; --blue-fill:#6E9BFF;
+  --on-fill:#140F29;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 18px 40px -22px rgba(0,0,0,.8);
+    --shadow-lg:0 2px 8px rgba(0,0,0,.4), 0 40px 80px -30px rgba(0,0,0,.9);
+    --glass:rgba(23,18,41,.72);
+    --scrim:rgba(6,4,14,.62);
+    --blob-1:rgba(124,88,255,.22);
+    --blob-2:rgba(255,120,50,.12);
+    --blob-3:rgba(60,110,255,.14);
+  }
+}
+
+/* Each section leans on one of the three colours. */
+body[data-world="schedule"], body[data-world="help"]{
+  --accent:var(--purple); --accent-text:var(--purple-text); --fill:var(--purple-fill); --accent-2:var(--orange);
+}
+body[data-world="work"], body[data-world="announcements"]{
+  --accent:var(--orange); --accent-text:var(--orange-text); --fill:var(--orange-fill); --accent-2:var(--purple);
+}
+body[data-world="notebook"], body[data-world="calendar"]{
+  --accent:var(--blue); --accent-text:var(--blue-text); --fill:var(--blue-fill); --accent-2:var(--orange);
+}
+
+/* ------------------------------------------------------------ base -- */
+*,*::before,*::after{ box-sizing:border-box; }
+html{ overflow-x:clip; -webkit-text-size-adjust:100%; scroll-padding-top:calc(var(--header-h) + 16px); }
+body{
+  margin:0; min-height:100vh; overflow-x:clip;
+  background:var(--bg); color:var(--ink);
+  font-family:var(--font); font-size:15px; line-height:1.55;
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  padding-bottom:calc(var(--bottom-h) + env(safe-area-inset-bottom, 0px));
+  transition:background-color .35s var(--ease), color .35s var(--ease);
+}
+h1,h2,h3,h4{
+  font-family:var(--font); font-weight:800; letter-spacing:-.02em;
+  text-wrap:balance; margin:0 0 4px; line-height:1.2; color:var(--ink);
+}
+h2{ font-size:1.22rem; }
+h3{ font-size:1.02rem; font-weight:700; }
+p{ margin:0 0 10px; }
+a{ color:var(--accent-text); text-underline-offset:3px; }
+button, input, select, textarea{ font-family:inherit; }
+img{ max-width:100%; }
+::selection{ background:color-mix(in srgb, var(--purple) 26%, transparent); }
+:focus-visible{ outline:3px solid color-mix(in srgb, var(--purple) 60%, transparent); outline-offset:2px; border-radius:8px; }
+[hidden]{ display:none !important; }
+.sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+/* scrollbars that belong to the theme */
+*{ scrollbar-width:thin; scrollbar-color:color-mix(in srgb, var(--purple) 30%, transparent) transparent; }
+
+/* ------------------------------------------------------ backdrop -- */
+/* Three soft blobs of colour that drift very slowly behind everything. They
+   are plain gradients moved with transform, so they cost the compositor and
+   nothing else. */
+.backdrop{ position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden; }
+.backdrop i{
+  position:absolute; display:block; border-radius:50%;
+  filter:blur(40px); will-change:transform;
+}
+.backdrop .b1{ width:62vmax; height:62vmax; left:-18vmax; top:-24vmax;
+  background:radial-gradient(circle, var(--blob-1), transparent 66%);
+  animation:blob1 38s ease-in-out infinite alternate; }
+.backdrop .b2{ width:52vmax; height:52vmax; right:-20vmax; top:10vh;
+  background:radial-gradient(circle, var(--blob-2), transparent 66%);
+  animation:blob2 46s ease-in-out infinite alternate; }
+.backdrop .b3{ width:58vmax; height:58vmax; left:18vw; bottom:-34vmax;
+  background:radial-gradient(circle, var(--blob-3), transparent 66%);
+  animation:blob3 52s ease-in-out infinite alternate; }
+.backdrop::after{
+  content:""; position:absolute; inset:0;
+  background-image:radial-gradient(color-mix(in srgb, var(--purple) 16%, transparent) 1px, transparent 1.4px);
+  background-size:26px 26px;
+  mask-image:linear-gradient(180deg, rgba(0,0,0,.55), transparent 60%);
+  -webkit-mask-image:linear-gradient(180deg, rgba(0,0,0,.55), transparent 60%);
+}
+@keyframes blob1{ to{ transform:translate3d(8vw,6vh,0) scale(1.12); } }
+@keyframes blob2{ to{ transform:translate3d(-9vw,8vh,0) scale(1.08); } }
+@keyframes blob3{ to{ transform:translate3d(6vw,-6vh,0) scale(1.1); } }
+
+/* ------------------------------------------------------- icons -- */
+svg.ic{
+  width:1.1em; height:1.1em; display:inline-block; vertical-align:-.18em; flex:none;
+  fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;
+}
+svg.ic.big{ width:36px; height:36px; display:block; margin:0 auto 12px; stroke-width:1.6; color:var(--accent); }
+svg.emblem{ width:100%; height:100%; display:block; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+
+/* ------------------------------------------------------- motion -- */
+@keyframes rise{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:none; } }
+@keyframes fadeIn{ from{ opacity:0; } to{ opacity:1; } }
+@keyframes fadeUp{ from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:none; } }
+@keyframes pop{ 0%{ transform:scale(.6); opacity:0; } 60%{ transform:scale(1.08); opacity:1; } 100%{ transform:scale(1); } }
+@keyframes shimmer{ 0%{ background-position:100% 0; } 100%{ background-position:0 0; } }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+@keyframes shake{
+  10%,90%{ transform:translateX(-2px); } 20%,80%{ transform:translateX(4px); }
+  30%,50%,70%{ transform:translateX(-7px); } 40%,60%{ transform:translateX(7px); }
+}
+.shake{ animation:shake .42s var(--ease); }
+
+/* reveal on scroll — classes added by fx.js */
+.fx-rise{
+  opacity:0; transform:translate3d(0,14px,0);
+  transition:opacity .5s var(--ease-out) var(--fx-delay,0ms), transform .6s var(--ease-out) var(--fx-delay,0ms);
+}
+.fx-in{ opacity:1; transform:none; }
+.fx-ripple{
+  position:absolute; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, rgba(255,255,255,.55) 0%, transparent 62%);
+  opacity:.7; transform:scale(.1); animation:fxRipple .6s var(--ease-out) forwards;
+}
+.btn.ghost .fx-ripple, .chip-btn .fx-ripple, .pal-row .fx-ripple{
+  background:radial-gradient(circle, color-mix(in srgb, var(--accent) 30%, transparent) 0%, transparent 62%);
+}
+@keyframes fxRipple{ to{ transform:scale(1); opacity:0; } }
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms !important; animation-iteration-count:1 !important;
+    transition-duration:.01ms !important; scroll-behavior:auto !important;
+  }
+  .backdrop i{ animation:none !important; }
+  .fx-rise{ opacity:1 !important; transform:none !important; }
+}

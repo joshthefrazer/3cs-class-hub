@@ -24,6 +24,9 @@ function dayNumberFromLabel(label){
    The display lives in renderHero()/renderLineup(); this just computes. */
 
 function renderScheduleTable(highlightDay){
+  /* Repaints after a live edit call this with no argument; today's row
+     should stay marked either way. */
+  if (highlightDay === undefined){ try{ highlightDay = todayInfo().dayNum; }catch(e){ highlightDay = null; } }
   var table = document.getElementById("schedTable");
   var html = "<thead><tr><th>Day</th>";
   liveSessions().forEach(function(s){
