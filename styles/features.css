@@ -939,9 +939,27 @@ html[data-density="compact"] #tab-schedule.active{ gap: 12px; }
 .th-custom:hover{ opacity: 1; }
 
 /* the little collapse / hide buttons in a card's corner */
-.blk-tools{ display: flex; gap: 2px; margin-left: 4px; opacity: 0; transition: opacity var(--t-fast) var(--ease); }
+/* they float just above the card's top edge, so they never push the heading's own links around */
+.blk-tools{
+  position: absolute;
+  top: -15px;
+  right: 16px;
+  z-index: 3;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+  box-shadow: var(--sh-2);
+  opacity: 0;
+  transform: translateY(5px);
+  pointer-events: none;
+  transition: opacity var(--t-fast) var(--ease), transform var(--t) var(--spring);
+}
 .card:hover > .card-head .blk-tools, .card:focus-within > .card-head .blk-tools,
-.card:hover > .nd-head .blk-tools, .card:focus-within > .nd-head .blk-tools{ opacity: 1; }
+.card:hover > .nd-head .blk-tools, .card:focus-within > .nd-head .blk-tools{ opacity: 1; transform: none; pointer-events: auto; }
+.card:hover > .card-head .blk-tools, .card:focus-within > .card-head .blk-tools{ transform: none; pointer-events: auto; }
 /* on touch screens the corner buttons would crowd the headings; Customize does it all there */
 @media (hover: none), (max-width: 760px){ .blk-tools{ display: none; } }
 .blk-btn{
