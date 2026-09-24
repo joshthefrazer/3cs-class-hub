@@ -2,7 +2,7 @@ import { SCHED, CAL, BELL_MODES, SESSIONS, BELL, BELL_NOTE, DEFAULT_LEGEND } fro
 import { state } from "./state.js";
 
 /* =========================================================
-   LIVE CONFIG — what the site actually runs on.
+   LIVE CONFIG. What the site actually runs on.
 
    data.js holds the timetable as it was printed in the official 2026-2027
    calendar. That is the floor, and it is never edited: it is what a brand new
@@ -37,7 +37,7 @@ function build(){
   /* ---- schedule: per cycle-day rows of six {c,r,t} cells ---- */
   var schedule = {};
   Object.keys(SCHED).forEach(function(d){ schedule[d] = SCHED[d].slice(); });
-  var so = c.schedule;
+  var so = c.schedule2;   // "schedule" held edits to the first (2026) timetable
   if (so && typeof so === "object"){
     Object.keys(so).forEach(function(d){
       var row = so[d];
@@ -89,11 +89,11 @@ function build(){
   /* Session numbering follows the regular day, since that is the one the
      printed timetable is written against. */
   var sessions = modes.regular.sessions.map(function(p, i){
-    return { n: i + 1, time: p[0] + "–" + p[1] };
+    return { n: i + 1, time: p[0] + "-" + p[1] };
   });
 
   /* The subject key. Once an admin has published one it is authoritative, so
-     removing a row actually removes it — merging with the printed defaults
+     removing a row actually removes it. Merging with the printed defaults
      would quietly resurrect anything they deleted. Whatever the timetable
      currently teaches is always listed, though, even with no description, so
      a code can never appear in the grid with nothing explaining it. */

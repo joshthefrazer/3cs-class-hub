@@ -42,7 +42,7 @@ try{
 if (!state.adminUnlocked) state.adminMode = false;
 
 /* Passcode gate. Stored as a hash so the digits aren't sitting in the page
-   source, but this guards the INTERFACE only — the db write rules are what
+   source, but this guards the INTERFACE only. The db write rules are what
    actually decide who can change shared data. */
 var ADMIN_HASH = "9e263801";
 function hashPass(s){

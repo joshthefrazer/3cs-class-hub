@@ -3,10 +3,10 @@ import { toast } from "./backend.js";
 import { registerCommands } from "./palette.js";
 
 /* =========================================================
-   QUICK LAUNCH — the apps the class opens every day, one tap away.
+   QUICK LAUNCH. The apps the class opens every day, one tap away.
 
    Shown as a card on Today and as a popover from the grid button in the
-   header. The glyphs are drawn for the Hub (a board, a bulb, a page…) —
+   header. The glyphs are drawn for the Hub (a board, a bulb, a page…) -
    they are not the companies' logos.
 
    Your own additions and anything you hide are kept in this browser only:
@@ -110,7 +110,7 @@ function openAddForm(){
   sheet.innerHTML =
     '<div class="box" role="dialog" aria-modal="true" aria-labelledby="qlHead" style="max-width:440px">' +
       '<div class="sheet-head"><div><h2 id="qlHead">Add a shortcut</h2>' +
-      '<p class="hint" style="margin:2px 0 0">Saved on this device only — it doesn\'t change anyone else\'s list.</p></div>' +
+      '<p class="hint" style="margin:2px 0 0">Saved on this device only. It doesn\'t change anyone else\'s list.</p></div>' +
       '<button class="sheet-close" type="button" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"></use></svg></button></div>' +
       '<label class="field" style="margin-top:10px"><span>Name</span><input id="qlName" maxlength="24" placeholder="e.g. Khan Academy"></label>' +
       '<label class="field" style="margin-top:12px"><span>Web address</span><input id="qlUrl" type="url" inputmode="url" placeholder="https://"></label>' +

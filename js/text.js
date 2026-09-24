@@ -1,9 +1,13 @@
 import { ME, setMyName, toast } from "./backend.js";
 
 /* =========================================================
-   6. Text helpers — escaping, tiny markdown, sheets
+   6. Text helpers. Escaping, tiny markdown, sheets
    ========================================================= */
-var SHARE_BASE = "https://claude.ai/artifact/XdRGXjD9BSC45gT919RoTU";
+/* Where "link only" note links point: this page, wherever it's hosted. */
+var SHARE_BASE = (function(){
+  try{ if (location.origin && location.origin !== "null" && /^https?:/.test(location.protocol)) return location.origin + location.pathname; }catch(e){}
+  return "https://joshthefrazer.github.io/3cs-class-hub/";
+})();
 function svgIcon(name, cls){
   return '<svg class="ic' + (cls ? " " + cls : "") + '" aria-hidden="true"><use href="#' +
          name + '"></use></svg>';
@@ -89,7 +93,7 @@ function openNameSheet(onDone){
   var box = openSheet(
     '<div class="sheet-head"><h2>What should the class call you?</h2>' +
     '<button class="sheet-close" aria-label="Close">&times;</button></div>' +
-    '<p class="hint">This name appears on anything you post. It lives in this browser, and the Hub has no way to verify it — so use the name your classmates know you by.</p>' +
+    '<p class="hint">This name appears on anything you post. It lives in this browser, and the Hub has no way to verify it. So use the name your classmates know you by.</p>' +
     '<label class="field" style="margin-top:14px;"><span>Display name</span>' +
     '<input id="nmInput" maxlength="32" placeholder="e.g. Joshua M."></label>' +
     '<div class="btn-row" style="margin-top:16px;"><button class="btn" id="nmSave">Save name</button></div>'

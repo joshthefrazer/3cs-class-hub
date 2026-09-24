@@ -3,7 +3,7 @@ import { state } from "./state.js";
 import { svgIcon } from "./text.js";
 
 /* =========================================================
-   5. Rendering — Announcements
+   5. Rendering, Announcements
    ========================================================= */
 function renderGlobalBanner(){
   var b = state.globalBanner;

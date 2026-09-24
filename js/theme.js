@@ -1,5 +1,5 @@
 /* =========================================================
-   THEME — light by default, with a dark switch.
+   THEME. Light by default, with a dark switch.
 
    With nothing chosen the Hub follows the device. Pressing the switch
    pins a choice in this browser; the inline script in <head> reads it
@@ -57,6 +57,18 @@ function toggleTheme(){
   }
 }
 
+/* Settings sets the theme directly: "system", "light" or "dark". */
+function themeChoice(){ return chosen() || "system"; }
+function setTheme(mode){
+  var target = mode === "system" ? null : mode;
+  var wasDark = isDark();
+  var willDark = target ? target === "dark" : !!(media && media.matches);
+  if (wasDark === willDark || !document.startViewTransition){ apply(target); return; }
+  document.documentElement.classList.add("theme-swap");
+  var vt = document.startViewTransition(function(){ apply(target); });
+  vt.finished.finally(function(){ document.documentElement.classList.remove("theme-swap"); });
+}
+
 function initTheme(){
   var b = document.getElementById("themeBtn");
   if (b) b.addEventListener("click", toggleTheme);
@@ -64,4 +76,4 @@ function initTheme(){
   paintButton();
 }
 
-export { initTheme, toggleTheme, isDark };
+export { initTheme, toggleTheme, isDark, setTheme, themeChoice };

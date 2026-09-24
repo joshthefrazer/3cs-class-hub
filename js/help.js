@@ -3,6 +3,7 @@ import { allNotes, renderNotebook } from "./notebook.js";
 import { state } from "./state.js";
 import { openNameSheet, svgIcon } from "./text.js";
 import { avatarEl, displayName, onProfiles } from "./profile.js";
+import { subjectColor } from "./sched.js";
 
 /* =========================================================
    8. Help & Reminders board
@@ -110,6 +111,7 @@ function buildPostCard(p, i){
     head.appendChild(s);
   }
   chip("badge subj", (p.subject && p.subject !== "general") ? p.subject : "General");
+  head.lastChild.style.setProperty("--sc", subjectColor(p.subject));
   chip("badge " + (p.kind === "reminder" ? "link" : "pub"), p.kind === "reminder" ? "Reminder" : "Question");
   if (p.resolved) chip("badge res", "Resolved");
   if (p.pinned)   chipIcon("i-pin", "Pinned", "hot");
@@ -120,7 +122,7 @@ function buildPostCard(p, i){
   who.appendChild(document.createTextNode(p.authorUid ? displayName(p.authorUid, p.authorName) : (p.authorName || "Anonymous")));
   head.insertBefore(who, head.firstChild);
   var when = document.createElement("span");
-  when.textContent = "· " + fmtAgo(p.createdAt);
+  when.textContent = fmtAgo(p.createdAt);
   head.appendChild(when);
   el.appendChild(head);
 
@@ -201,7 +203,7 @@ function buildThread(p){
   if (!items.length){
     var none = document.createElement("div");
     none.className = "hint";
-    none.textContent = p.locked ? "No replies, and the thread is locked." : "No replies yet — you could be the one who helps.";
+    none.textContent = p.locked ? "No replies, and the thread is locked." : "No replies yet. You could be the one who helps.";
     wrap.appendChild(none);
   }
   items.forEach(function(r){
@@ -215,7 +217,7 @@ function buildThread(p){
     w.appendChild(document.createTextNode(r.authorUid ? displayName(r.authorUid, r.authorName) : (r.authorName || "Anonymous")));
     meta.appendChild(w);
     var t = document.createElement("span");
-    t.textContent = "· " + fmtAgo(r.createdAt);
+    t.textContent = fmtAgo(r.createdAt);
     meta.appendChild(t);
     if (mine(r) || canAdmin()){
       var d = document.createElement("button");
@@ -339,7 +341,7 @@ function postHelp(){
   try{ localStorage.removeItem("3cs_draft_help"); }catch(e){}
   renderHelp();
   ref.set(payload).then(function(){
-    toast(kind === "reminder" ? "Reminder posted." : "Question posted — someone will see it.");
+    toast(kind === "reminder" ? "Reminder posted." : "Question posted. Someone will see it.");
   }).catch(function(err){
     delete state.pending["hb:" + ref.id];
     input.value = text;
@@ -369,7 +371,7 @@ function renderFilterChips(){
   })), state.nbSubject, function(v){ state.nbSubject = v; renderNotebook(); });
 
   el = document.getElementById("noteVisChips");
-  if (el) chipRow(el, [["all","Everything"],["public","Public"],["link","Link only"],["private","On this device"]],
+  if (el) chipRow(el, [["all","Everything"],["public","Public"],["link","Link only"],["private", usingFirebase() ? "Private" : "On this device"]],
     state.nbVis, function(v){ state.nbVis = v; renderNotebook(); });
 
   var pseen = {};

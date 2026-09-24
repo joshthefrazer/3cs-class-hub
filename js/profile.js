@@ -4,10 +4,10 @@ import { closeSheet, esc, openSheet } from "./text.js";
 import { registerCommands } from "./palette.js";
 
 /* =========================================================
-   PROFILES — a name and a photo for everyone in the class.
+   PROFILES. A name and a photo for everyone in the class.
 
    The photo is cropped in the browser to a small square (256px, WebP or
-   JPEG, usually 10–25 KB) and stored as text right on the profile
+   JPEG, usually 10-25 KB) and stored as text right on the profile
    document. The Firebase free plan has no file storage, and a picture this
    size costs about the same to read as a long message, so ten people
    loading the Hub a few times a day stays far inside the free limits.
@@ -18,8 +18,8 @@ import { registerCommands } from "./palette.js";
    ========================================================= */
 
 var GRADS = [
-  ["#6A3DE8","#F26B1D"], ["#2F6BEF","#6A3DE8"], ["#F26B1D","#D6456A"], ["#0F9D6B","#2F6BEF"],
-  ["#8A4DF0","#2F6BEF"], ["#E8601A","#F4A340"], ["#5B4FD6","#0E9FB5"], ["#D6456A","#8A4DF0"]
+  ["#5B2B8C","#8E5CC8"], ["#E8641C","#F29A4A"], ["#2456D6","#5B8BEF"], ["#16805A","#3BB485"],
+  ["#B3304A","#E0607A"], ["#0E8499","#36B3C4"], ["#A15C08","#D69A2E"], ["#3F3A9E","#6E68D6"]
 ];
 function hash(s){ var h = 7; s = String(s || ""); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
 function initials(name){
@@ -66,7 +66,7 @@ function paintMe(){
   b.hidden = false;
   b.innerHTML = "";
   b.appendChild(avatarEl(me.id, me.name, "md"));
-  b.setAttribute("aria-label", "Your profile — " + displayName(me.id, me.name));
+  b.setAttribute("aria-label", "Your profile, " + displayName(me.id, me.name));
   b.title = displayName(me.id, me.name) + (BE.isAdmin ? " · admin" : "");
 }
 
@@ -250,7 +250,7 @@ function openProfileSheet(){
   function take(file){
     if (!file) return;
     if (!/^image\//.test(file.type)){ toast("That file isn't an image.", true); return; }
-    if (file.size > 15 * 1024 * 1024){ toast("That photo is over 15 MB — try a smaller one.", true); return; }
+    if (file.size > 15 * 1024 * 1024){ toast("That photo is over 15 MB. Try a smaller one.", true); return; }
     var url = URL.createObjectURL(file);
     var im = new Image();
     im.onload = function(){
@@ -282,7 +282,7 @@ function openProfileSheet(){
     if (!nm){ toast("Put in a name.", true); nameIn.focus(); return; }
     if (nm.length > 40){ toast("Keep the name under 40 characters.", true); return; }
     if (photoChanged && crop.has()) photo = crop.export();
-    if (photo.length > 90000){ toast("That photo is still too big after shrinking — try another.", true); return; }
+    if (photo.length > 90000){ toast("That photo is still too big after shrinking. Try another.", true); return; }
     if (!BE.db){ toast("Saving isn't available in this view.", true); return; }
     saveBtn.disabled = true; saveBtn.textContent = "Saving…";
     var row = { name: nm, photo: photo, updatedAt: new Date().toISOString() };
@@ -299,6 +299,7 @@ function openProfileSheet(){
       paintAuth();
       closeSheet();
       toast("Profile saved.");
+      import("./people.js").then(function(m){ m.touchDirectory(true); });
     }).catch(function(err){
       saveBtn.disabled = false; saveBtn.textContent = "Save profile";
       toast(dbErrMsg(err), true);

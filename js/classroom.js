@@ -4,7 +4,7 @@ import { esc, svgIcon } from "./text.js";
 import { subjectCodes } from "./sched.js";
 
 /* =========================================================
-   GOOGLE CLASSROOM — one account's feed, the whole class's list.
+   GOOGLE CLASSROOM. One account's feed, the whole class's list.
 
    Only an admin ever connects this, and only ever to their own Google
    account. What comes back is read three ways:
@@ -98,7 +98,7 @@ function describeOauthError(r){
 function api(path){
   return fetch(API + path, { headers: { Authorization: "Bearer " + token } })
     .then(function(r){
-      if (r.status === 401){ token = null; throw new Error("The Google session expired — connect again."); }
+      if (r.status === 401){ token = null; throw new Error("The Google session expired. Connect again."); }
       if (r.status === 403) throw new Error("Google refused that request. The Classroom API may not be enabled, or your school blocks it.");
       if (!r.ok) throw new Error("Classroom returned " + r.status + ".");
       return r.json();
@@ -173,7 +173,7 @@ function guessSubject(courseName){
 function sync(){
   if (!canAdmin()){ toast("Admins only.", true); return; }
   if (!configured()){
-    status("Google Classroom isn't set up for this Hub yet — it needs a Google Cloud client id. Nothing else is affected.", true);
+    status("Google Classroom isn't set up for this Hub yet. It needs a Google Cloud client id. Nothing else is affected.", true);
     return;
   }
   status("Opening Google…");
@@ -223,7 +223,7 @@ function sync(){
 
       token = null;        // done with it
       if (!pulled.length){
-        status("Nothing outstanding — everything in Classroom is either handed in or past its date.");
+        status("Nothing outstanding. Everything in Classroom is either handed in or past its date.");
         renderPreview();
         return;
       }

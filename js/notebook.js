@@ -1,7 +1,9 @@
 import { checkNoteHash, setTab } from "./admin.js";
 import { BE, ME, authorFields, canAdmin, dbErrMsg, fmtAgo, fmtWhen, mine, myName, requireDb, saveConfig, signedIn, toast, usingFirebase } from "./backend.js";
 import { renderFilterChips } from "./help.js";
-import { subjectCodes, subjectLabel } from "./sched.js";
+import { subjectCodes, subjectLabel, subjectColor } from "./sched.js";
+import { compressImage, uploadMedia, loadMedia, mediaEl, pickFiles, mediaError, lazy } from "./media.js";
+import { avatarEl, displayName } from "./profile.js";
 import { state } from "./state.js";
 import { SHARE_BASE, closeSheet, esc, mdRender, openSheet, svgIcon, toggleCheckSource } from "./text.js";
 
@@ -10,7 +12,7 @@ import { SHARE_BASE, closeSheet, esc, mdRender, openSheet, svgIcon, toggleCheckS
    ========================================================= */
 function renderNotebookIntro(){
   var intro = state.notebookNote ||
-    "Notes, resources, and study material for 3CS — anyone in the class can add a page.";
+    "Notes, resources, and study material for 3CS. Anyone in the class can add a page.";
   document.getElementById("notebookNote").textContent = intro;
   document.getElementById("notebookInput").value = state.notebookNote || "";
   document.getElementById("notebookEditWrap").hidden = !state.adminMode;
@@ -118,7 +120,7 @@ function renderNotebook(){
     var filtered = state.nbQuery || state.nbSubject !== "all" || state.nbVis !== "all";
     empty.innerHTML = filtered
       ? svgIcon("i-search-x","big")+'<h3>Nothing matches those filters</h3><p>Try clearing the search or picking “All subjects”.</p>'
-      : svgIcon("i-book","big")+'<h3>The notebook is empty</h3><p>Add the first page — class notes, a homework breakdown, a revision checklist.</p>';
+      : svgIcon("i-book","big")+'<h3>The notebook is empty</h3><p>Add the first page: class notes, a homework breakdown, a revision checklist.</p>';
     return;
   }
   empty.hidden = true;
@@ -127,6 +129,7 @@ function renderNotebook(){
     var card = document.createElement("button");
     card.type = "button";
     card.className = "note-card rise" + (n._pending ? " pending" : "");
+    card.style.setProperty("--sc", subjectColor(n.subject));
     card.style.animationDelay = Math.min(i * 26, 280) + "ms";
 
     var top = document.createElement("div");
@@ -139,6 +142,7 @@ function renderNotebook(){
                          : "Public";
     var subjBadge = document.createElement("span");
     subjBadge.className = "badge subj";
+    subjBadge.style.setProperty("--sc", subjectColor(n.subject));
     subjBadge.textContent = (n.subject && n.subject !== "general") ? n.subject : "General";
     top.appendChild(subjBadge);
     top.appendChild(visBadge);
@@ -151,14 +155,32 @@ function renderNotebook(){
     var foot = document.createElement("div");
     foot.className = "note-foot";
     var who = document.createElement("span");
-    who.textContent = n._priv ? "Private to you"
+    who.className = "who";
+    if (!n._priv && !n._local) who.appendChild(avatarEl(n.authorUid || n.authorToken, n.authorName, "xs"));
+    who.appendChild(document.createTextNode(n._priv ? "Private to you"
                     : n._local ? "Only on this device"
-                    : (n.authorName || "Anonymous");
+                    : (n.authorUid ? displayName(n.authorUid, n.authorName) : (n.authorName || "Anonymous"))));
     var when = document.createElement("span");
     when.textContent = fmtAgo(n.updatedAt);
     foot.appendChild(who); foot.appendChild(when);
 
-    card.appendChild(top); card.appendChild(h); card.appendChild(snip); card.appendChild(foot);
+    card.appendChild(top); card.appendChild(h); card.appendChild(snip);
+    var imgs = Array.isArray(n.images) ? n.images.filter(function(x){ return typeof x === "string" && x.length <= 40; }) : [];
+    if (imgs.length){
+      var th = document.createElement("div");
+      th.className = "note-thumbs";
+      imgs.slice(0, 3).forEach(function(id){
+        var t = document.createElement("span");
+        t.className = "nt";
+        lazy(t, function(){
+          loadMedia(id).then(function(m){ var im = document.createElement("img"); im.alt = ""; im.src = m.data; t.appendChild(im); }).catch(function(){});
+        });
+        th.appendChild(t);
+      });
+      if (imgs.length > 3){ var more = document.createElement("span"); more.className = "nt more"; more.textContent = "+" + (imgs.length - 3); th.appendChild(more); }
+      card.appendChild(th);
+    }
+    card.appendChild(foot);
     card.addEventListener("click", function(){ openNote(n); });
     grid.appendChild(card);
   });
@@ -170,13 +192,13 @@ function openNote(note){
   var shareHtml = vis === "link"
     ? '<div class="sharebox"><input id="nvLink" readonly aria-label="Share link">' +
       '<button class="btn ghost sm" id="nvCopy">Copy</button></div>' +
-      '<p class="hint" style="margin-top:7px;">Anyone signed in to this Hub who has this link can open the note — it isn\'t locked to specific people.</p>'
+      '<p class="hint" style="margin-top:7px;">Anyone signed in to this Hub who has this link can open the note. It isn\'t locked to specific people.</p>'
     : "";
   var box = openSheet(
     '<div class="sheet-head"><h2 id="nvTitle"></h2>' +
-    '<button class="sheet-close" aria-label="Close">&times;</button></div>' +
+    '<button class="sheet-close" aria-label="Close">' + svgIcon("i-close") + '</button></div>' +
     '<div class="sheet-meta" id="nvMeta"></div>' +
-    '<div class="md" id="nvBody"></div>' + shareHtml +
+    '<div class="md" id="nvBody"></div><div class="note-gallery" id="nvGallery" hidden></div>' + shareHtml +
     '<div class="sheet-actions" id="nvActions"></div>'
   );
 
@@ -189,7 +211,7 @@ function openNote(note){
   meta.appendChild(sb);
   var vb = document.createElement("span");
   vb.className = "badge " + (vis === "link" ? "link" : vis === "private" ? "priv" : "pub");
-  vb.textContent = vis === "link" ? "Link only" : vis === "private" ? "This device only" : "Public to the class";
+  vb.textContent = vis === "link" ? "Link only" : vis === "private" ? (usingFirebase() ? "Private" : "This device only") : "Public to the class";
   meta.appendChild(vb);
   var mw = document.createElement("span");
   mw.textContent = (note._local ? "Saved on this device" : (note.authorName || "Anonymous")) +
@@ -211,6 +233,13 @@ function openNote(note){
   }
   paint();
 
+  var gal = box.querySelector("#nvGallery");
+  var nimgs = Array.isArray(note.images) ? note.images.filter(function(x){ return typeof x === "string" && x.length <= 40; }) : [];
+  if (nimgs.length){
+    gal.hidden = false;
+    nimgs.forEach(function(id){ gal.appendChild(mediaEl(id, 0, 0, { cls: "ng-img", label: "Open picture", alt: "Picture in " + (note.title || "this note") })); });
+  }
+
   if (vis === "link"){
     var linkInput = box.querySelector("#nvLink");
     var url = SHARE_BASE + "#note=" + note.id;
@@ -220,7 +249,7 @@ function openNote(note){
       if (navigator.clipboard && navigator.clipboard.writeText){
         navigator.clipboard.writeText(url).then(function(){
           toast("Link copied. If it doesn't jump straight to the note, paste it into “Open by link”.");
-        }).catch(function(){ linkInput.select(); toast("Copy blocked here — select the link and copy it manually.", true); });
+        }).catch(function(){ linkInput.select(); toast("Copy blocked here. Select the link and copy it manually.", true); });
       } else { linkInput.select(); toast("Select the link and copy it manually."); }
     });
   }
@@ -288,56 +317,128 @@ function visHintText(kind){
   if (kind === "public") return "Everyone signed in to the Hub sees it in the notebook list.";
   if (kind === "link"){
     return usingFirebase()
-      ? "Kept out of the notebook list by the server — it can only be opened by someone who has its link."
+      ? "Kept out of the notebook list by the server. It can only be opened by someone who has its link."
       : "Hidden from the list, but anyone signed in who has the link can open it. That's link-secrecy, not a lock.";
   }
   return usingFirebase()
-    ? "Stored under your account, where the security rules let nobody else read it — not classmates, not admins. It follows you to your phone."
-    : "Saved in this browser only. It won't appear on your phone or another computer, and nobody else — admins included — can see or recover it.";
+    ? "Stored under your account, where the security rules let nobody else read it, not classmates and not admins. It follows you to your phone."
+    : "Saved in this browser only. It won't appear on your phone or another computer, and nobody else (admins included) can see or recover it.";
 }
 
 function openNoteEditor(existing){
   var n = existing || { title:"", body:"", subject:"general", visibility:"public" };
+  var fb = usingFirebase();
   var box = openSheet(
     '<div class="sheet-head"><h2>' + (existing ? "Edit note" : "New note") + "</h2>" +
-    '<button class="sheet-close" aria-label="Close">&times;</button></div>' +
+    '<button class="sheet-close" aria-label="Close">' + svgIcon("i-close") + '</button></div>' +
     '<div class="stack" style="gap:13px;">' +
-      '<label class="field"><span>Title</span><input id="neTitle" maxlength="120" placeholder="e.g. S&amp;T — cell structure revision"></label>' +
+      '<label class="field"><span>Title</span><input id="neTitle" maxlength="120" placeholder="e.g. S&amp;T cell structure revision"></label>' +
       '<div class="grid-2">' +
         '<label class="field"><span>Subject</span><select id="noteSubjectSelect">' + subjectOptionsHtml(n.subject || "general") + "</select></label>" +
         '<label class="field"><span>Who can see it</span><select id="neVis">' +
-          '<option value="public">Public — the whole class</option>' +
-          '<option value="link">Link only — hidden from the list</option>' +
-          '<option value="private">Private — this browser only</option>' +
+          '<option value="public">Public: the whole class</option>' +
+          '<option value="link">Link only: hidden from the list</option>' +
+          '<option value="private">' + (fb ? "Private: only you" : "Private: this browser only") + '</option>' +
         "</select></label>" +
       "</div>" +
-      '<label class="field"><span>Note</span><textarea id="neBody" placeholder="Write the note here…"></textarea></label>' +
-      '<p class="hint"><strong>Formatting:</strong> <code>**bold**</code> · <code>*italic*</code> · <code>`code`</code> · <code>- bullet</code> · <code>- [ ] checkbox</code> · <code># heading</code></p>' +
+      '<label class="field"><span>Note</span><textarea id="neBody" placeholder="Write the note here" style="min-height:160px"></textarea></label>' +
+      '<p class="hint"><strong>Formatting:</strong> <code>**bold**</code>, <code>*italic*</code>, <code>`code`</code>, <code>- bullet</code>, <code>- [ ] checkbox</code>, <code># heading</code></p>' +
+      (fb
+        ? '<div class="field"><span>Pictures</span><div class="img-drop" id="neImgs"></div>' +
+          '<small class="hint">Up to 6. Big photos are shrunk automatically. You can also paste a picture into the note.</small></div>'
+        : "") +
       '<p class="hint" id="neVisHint"></p>' +
-      '<div class="btn-row"><button class="btn" id="neSave">' + (existing ? "Save changes" : "Add to notebook") + "</button>" +
-      '<button class="btn ghost sm" id="neCancel">Cancel</button></div>' +
+      '<div class="sheet-actions"><button class="btn ghost sm" id="neCancel" type="button">Cancel</button>' +
+      '<button class="btn" id="neSave" type="button">' + (existing ? "Save changes" : "Add to notebook") + "</button></div>" +
     "</div>"
   );
+  box.classList.add("wide");
   box.querySelector("#neTitle").value = n.title || "";
-  box.querySelector("#neBody").value = n.body || "";
+  var bodyIn = box.querySelector("#neBody");
+  bodyIn.value = n.body || "";
   var visSel = box.querySelector("#neVis");
   visSel.value = n.visibility || "public";
   var visHint = box.querySelector("#neVisHint");
   function paintHint(){ visHint.textContent = visHintText(visSel.value); }
   paintHint();
   visSel.addEventListener("change", paintHint);
+
+  /* pictures: each one is uploaded as soon as it's picked, so saving the
+     note is instant; the note itself only keeps the ids */
+  var images = (Array.isArray(n.images) ? n.images : []).filter(function(x){ return typeof x === "string" && x.length <= 40; });
+  var busy = 0;
+  var imgBox = box.querySelector("#neImgs");
+  function paintImgs(){
+    if (!imgBox) return;
+    imgBox.innerHTML = "";
+    images.forEach(function(id, i){
+      var chip = document.createElement("div");
+      chip.className = "img-chip";
+      loadMedia(id).then(function(m){ var im = document.createElement("img"); im.alt = ""; im.src = m.data; chip.insertBefore(im, chip.firstChild); }).catch(function(){});
+      var x = document.createElement("button");
+      x.type = "button"; x.innerHTML = "&times;"; x.setAttribute("aria-label", "Remove picture " + (i + 1));
+      x.addEventListener("click", function(){ images.splice(i, 1); paintImgs(); });
+      chip.appendChild(x);
+      imgBox.appendChild(chip);
+    });
+    for (var b = 0; b < busy; b++){ var c = document.createElement("div"); c.className = "img-chip busy"; imgBox.appendChild(c); }
+    if (images.length + busy < 6){
+      var add = document.createElement("button");
+      add.type = "button"; add.className = "img-add";
+      add.setAttribute("aria-label", "Add a picture");
+      add.innerHTML = svgIcon("i-image");
+      add.addEventListener("click", function(){ pickFiles("image/*", true).then(addFiles); });
+      imgBox.appendChild(add);
+    }
+  }
+  function addFiles(files){
+    files = files.filter(function(f){ return /^image\//.test(f.type); }).slice(0, 6 - images.length - busy);
+    files.forEach(function(f){
+      busy++; paintImgs();
+      var scope = visSel.value === "private" ? "user" : "hub";
+      compressImage(f, 1600).then(function(m){ return uploadMedia(m, scope); })
+        .then(function(id){ images.push(id); })
+        .catch(function(e){ toast(mediaError(e), true); })
+        .then(function(){ busy--; paintImgs(); });
+    });
+  }
+  paintImgs();
+  if (imgBox) bodyIn.addEventListener("paste", function(e){
+    var files = Array.prototype.slice.call((e.clipboardData && e.clipboardData.files) || []);
+    if (files.some(function(f){ return /^image\//.test(f.type); })){ e.preventDefault(); addFiles(files); }
+  });
+
   box.querySelector("#neCancel").addEventListener("click", closeSheet);
   box.querySelector("#neSave").addEventListener("click", function(){
     var title = box.querySelector("#neTitle").value.trim();
-    var body  = box.querySelector("#neBody").value;
-    if (!title && !body.trim()){ toast("Give the note a title or some content first.", true); return; }
-    saveNote(existing, {
+    var body  = bodyIn.value;
+    if (busy){ toast("Wait a second, a picture is still uploading.", true); return; }
+    if (!title && !body.trim() && !images.length){ toast("Give the note a title or some content first.", true); return; }
+    var data = {
       title: title || "Untitled note",
       body: body,
       subject: box.querySelector("#noteSubjectSelect").value,
       visibility: visSel.value
-    });
+    };
+    if (fb) data.images = images.slice(0, 6);
+    var saveBtn = box.querySelector("#neSave");
+    saveBtn.disabled = true;
+    /* A picture first added to a private note is only readable by you, so
+       it's copied for the class when the note is shared. */
+    (data.visibility !== "private" && images.length ? shareImages(images) : Promise.resolve(images)).then(function(ids){
+      if (fb) data.images = ids;
+      saveNote(existing, data);
+    }).catch(function(e){ saveBtn.disabled = false; toast(mediaError(e), true); });
   });
+}
+
+function shareImages(ids){
+  return Promise.all(ids.map(function(id){
+    return loadMedia(id).then(function(m){
+      if (m.scope !== "user") return id;
+      return uploadMedia({ data: m.data, w: m.w, h: m.h, kind: "image" }, "hub");
+    }).catch(function(){ return id; });
+  }));
 }
 
 function saveNote(existing, data){
@@ -346,7 +447,7 @@ function saveNote(existing, data){
 
   if (data.visibility === "private"){
     /* On Firebase a private note lives under your own uid, where the rules
-       let nobody else read it — so it syncs to your phone and is genuinely
+       let nobody else read it. So it syncs to your phone and is genuinely
        private. On the artifact it stays in this browser, as before. */
     if (usingFirebase()){
       if (!BE.user){ toast("Sign in to save a private note.", true); return; }
@@ -360,7 +461,7 @@ function saveNote(existing, data){
           BE.db.collection("notebook").doc(existing.id).delete().catch(function(){});
         }
         closeSheet();
-        toast("Saved privately — only your account can see it.");
+        toast("Saved privately. Only your account can see it.");
       }).catch(function(err){ toast(dbErrMsg(err), true); });
       return;
     }

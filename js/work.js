@@ -4,11 +4,11 @@ import {
 } from "./backend.js";
 import { state } from "./state.js";
 import { esc, safeUrl, svgIcon } from "./text.js";
-import { subjectCodes, subjectLabel } from "./sched.js";
+import { subjectCodes, subjectLabel, subjectColor } from "./sched.js";
 import { renderNowStrip } from "./orbit.js";
 
 /* =========================================================
-   WORK — assignments and due dates.
+   WORK. Assignments and due dates.
 
    Two things live side by side here and they are deliberately kept apart:
 
@@ -163,6 +163,14 @@ function renderWork(){
   var status = document.getElementById("workStatus");
   var rows = visibleWork();
 
+  if (usingFirebase() && !BE.user && state.dbSettled){
+    list.innerHTML = "";
+    list.appendChild(emptyState("i-lock", "Sign in to see the work", "The class's assignments show up here once you're signed in, soonest first."));
+    var sb = document.createElement("button");
+    sb.className = "btn js-signin"; sb.type = "button"; sb.textContent = "Sign in"; sb.style.marginTop = "10px";
+    list.lastChild.appendChild(sb);
+    return;
+  }
   if (!state.workLoaded && !rows.length){
     list.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
     return;
@@ -218,7 +226,10 @@ function workCard(a, bk){
   tick.setAttribute("aria-pressed", done ? "true" : "false");
   tick.setAttribute("aria-label", done ? "Mark as not finished" : "Mark as finished");
   tick.innerHTML = svgIcon("i-check");
-  tick.addEventListener("click", function(){ toggleDone(a); });
+  tick.addEventListener("click", function(e){
+    if (!isDone(a)) burst(tick);
+    toggleDone(a);
+  });
   card.appendChild(tick);
 
   var mid = document.createElement("div");
@@ -229,6 +240,7 @@ function workCard(a, bk){
   if (a.subject){
     var pill = document.createElement("span");
     pill.className = "work-subj";
+    pill.style.setProperty("--sc", subjectColor(a.subject));
     pill.textContent = a.subject;
     pill.title = subjectLabel(a.subject) || a.subject;
     top.appendChild(pill);
@@ -289,6 +301,30 @@ function emptyState(icon, title, text){
   return d;
 }
 
+/* A small pop of confetti from the tick, for finishing something. */
+function burst(from){
+  if (document.documentElement.classList.contains("reduce-motion") ||
+      (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) return;
+  var r = from.getBoundingClientRect();
+  var b = document.createElement("div");
+  b.className = "burst";
+  b.style.left = (r.left + r.width / 2) + "px";
+  b.style.top = (r.top + r.height / 2) + "px";
+  var colors = ["#E8641C", "#5B2B8C", "#2456D6", "#16A06A", "#F2B600", "#D6456A"];
+  for (var i = 0; i < 14; i++){
+    var p = document.createElement("i");
+    var ang = (i / 14) * Math.PI * 2 + Math.random() * .4;
+    var dist = 34 + Math.random() * 30;
+    p.style.setProperty("--c", colors[i % colors.length]);
+    p.style.setProperty("--x", (Math.cos(ang) * dist).toFixed(1) + "px");
+    p.style.setProperty("--y", (Math.sin(ang) * dist - 10).toFixed(1) + "px");
+    p.style.setProperty("--r", (Math.random() * 360 - 180).toFixed(0) + "deg");
+    b.appendChild(p);
+  }
+  document.body.appendChild(b);
+  setTimeout(function(){ b.remove(); }, 800);
+}
+
 /* ------------------------------------------------------------- my ticks -- */
 
 /* Written under your own account, never into the shared row. On the artifact
@@ -307,9 +343,10 @@ function toggleDone(a){
       ? ref.set({ done:true, at:new Date().toISOString() })
       : ref.delete();
     p.catch(function(err){
-      state.workDone[a.id] = !next;    // put it back; the server said no
-      if (!next) state.workDone[a.id] = true; else delete state.workDone[a.id];
+      /* put it back; the server said no */
+      if (next) delete state.workDone[a.id]; else state.workDone[a.id] = true;
       renderWork();
+      paintWorkChip();
       toast(dbErrMsg(err), true);
     });
     return;
@@ -342,7 +379,7 @@ function openWorkSheet(a){
   subjectCodes().forEach(function(c){
     var o = document.createElement("option");
     o.value = c;
-    o.textContent = subjectLabel(c) ? c + " — " + subjectLabel(c) : c;
+    o.textContent = subjectLabel(c) || c;
     sel.appendChild(o);
   });
 
@@ -437,9 +474,11 @@ function renderDueSoon(){
     var k = bucketOf(a);
     return k === "overdue" || k === "today" || k === "tomorrow" || k === "week";
   }).sort(function(a, b){ return dueDate(a) - dueDate(b); });
-  if (title) title.textContent = soon.length ? soon.length + (soon.length === 1 ? " thing this week" : " things this week") : "You're all caught up";
+  if (title) title.textContent = soon.length ? soon.length + (soon.length === 1 ? " thing due this week" : " things due this week") : "What's due";
   if (!soon.length){
-    box.innerHTML = '<p class="hint" style="margin:0">' + (!state.workLoaded && !state.standalone ? "Loading…" : "Nothing due in the next seven days. Enjoy it.") + '</p>';
+    box.innerHTML = !state.workLoaded && !state.standalone
+      ? '<div class="skel skel-line"></div><div class="skel skel-line" style="width:70%"></div>'
+      : '<div class="due-empty"><span class="hand">all caught up!</span><p class="hint">Nothing due in the next seven days. When something gets assigned it shows up here.</p></div>';
     return;
   }
   soon.slice(0, 5).forEach(function(a){
@@ -448,7 +487,7 @@ function renderDueSoon(){
     row.type = "button";
     row.className = "due-row" + (k === "overdue" ? " bad" : k === "today" ? " hot" : "");
     row.innerHTML =
-      '<span class="dd"><b>' + d.getDate() + '</b><span>' + MON[d.getMonth()] + '</span></span>' +
+      '<span class="dd"><span>' + MON[d.getMonth()] + '</span><b>' + d.getDate() + '</b></span>' +
       '<span class="dt"><strong></strong><small></small></span>';
     row.querySelector("strong").textContent = a.title || "Untitled";
     row.querySelector("small").textContent = [a.subject, duePhrase(a)].filter(Boolean).join(" · ");

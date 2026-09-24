@@ -1,11 +1,10 @@
 import { DOW, MONTHS, MONTH_NAMES } from "./data.js";
-import { liveCal } from "./live.js";
-import { renderHero } from "./orbit.js";
+import { liveCal, liveDayMode } from "./live.js";
+import { esc } from "./text.js";
 import { todayISO } from "./sched.js";
-import { state } from "./state.js";
 
 /* =========================================================
-   4. Rendering — Calendar tab
+   4. Rendering, Calendar tab
    ========================================================= */
 var calCursor = (function(){
   var t = new Date();
@@ -45,17 +44,21 @@ function renderCalendar(){
     var iso = year+"-"+String(month+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");
     var info = liveCal()[iso];
     var cell = document.createElement("div");
-    cell.className = "cal-cell" + (info && info.kind ? " k-"+info.kind : "") + (iso===todayStr?" is-today":"");
-    var html = '<div class="dnum">'+day+'</div>';
-    if (info && info.day) html += '<div class="dlabel">'+info.day+'</div>';
+    var short = info && info.day && liveDayMode(info).key !== "regular";
+    cell.className = "cal-cell" + (info && info.kind ? " k-" + info.kind : "") + (short ? " k-short" : "") + (iso === todayStr ? " is-today" : "");
+    var html = '<div class="dnum">' + day + '</div>';
+    if (info && info.day) html += '<div class="dlabel">' + esc(info.day) + '</div>';
     if (info && info.events && info.events.length){
-      html += info.events.slice(0,3).map(function(e){ return '<div class="ev">'+e+'</div>'; }).join("");
+      html += info.events.slice(0, 3).map(function(e){ return '<div class="ev">' + esc(e) + '</div>'; }).join("");
     }
-    cell.style.animationDelay = Math.min(day * 8, 320) + "ms";
+    var said = [new Date(year, month, day).toLocaleDateString(undefined, { weekday:"long", month:"long", day:"numeric" })];
+    if (info && info.day) said.push(info.day);
+    if (info && info.events) said = said.concat(info.events);
+    cell.setAttribute("aria-label", said.join(". "));
+    cell.style.animationDelay = Math.min(day * 10, 360) + "ms";
     cell.innerHTML = html;
     grid.appendChild(cell);
   }
-  if (state.tab === "calendar") renderHero("calendar");
 }
 
 

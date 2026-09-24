@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // ============================================================================
-// 3CS Class Hub — Firestore security rules
+// 3CS Class Hub - Firestore security rules
 //
 // This file is the real security boundary. Everything in index.html is just a
 // user interface: anyone can open devtools and call the database directly, so
@@ -21,14 +21,14 @@ service cloud.firestore {
     }
 
     function myEmail() {
-      return request.auth.token.email.lower();
+      return request.auth.token.get('email', '').lower();
     }
 
-    // The owner is hard-coded so there is always one admin who cannot be
-    // locked out, even if the admins document is deleted.
-    // CHANGE THIS if you sign in with a different account than your Gmail.
+    // The owners are hard-coded so there is always an admin who cannot be
+    // locked out, even if the admins document is deleted. Owners can see and
+    // moderate everything, including private chats.
     function isOwner() {
-      return signedIn() && myEmail() == 'joshthefrazer@gmail.com';
+      return signedIn() && myEmail() in ['joshthefrazer@gmail.com', 'joshua.malic@sls.edu.bz'];
     }
 
     // Everyone else becomes an admin by being listed in config/admins.
@@ -40,9 +40,8 @@ service cloud.firestore {
       );
     }
 
-    // OPTIONAL — restrict the whole Hub to one email domain.
+    // OPTIONAL - restrict the whole Hub to one email domain.
     // Swap the body for:  return signedIn() && myEmail().matches('.*@yourschool[.]edu[.]bz');
-    // and only school accounts can read anything.
     function mayUseHub() {
       return signedIn();
     }
@@ -69,6 +68,71 @@ service cloud.firestore {
              (d.link is string && d.link.size() <= 600 && d.link.matches('https?://[^\\s]+'));
     }
 
+    // Pictures attached to a note are stored as separate media documents;
+    // the note only carries their ids.
+    function imagesOk(d) {
+      return !('images' in d) || (d.images is list && d.images.size() <= 6);
+    }
+
+    // ---- moderation --------------------------------------------------------
+    // An admin can take someone out of every chat for a while. The rules
+    // check the list on every message, so it holds even against a modified
+    // page.
+
+    function chatBlocked() {
+      return exists(/databases/$(database)/documents/config/moderation) &&
+             request.auth.uid in get(/databases/$(database)/documents/config/moderation).data.get('chatBlocked', []);
+    }
+
+    // ---- chat messages (the class room, DMs and groups share one shape) ----
+
+    function replyOk(r) {
+      return r is map
+          && r.keys().hasOnly(['id', 'uid', 'name', 'text'])
+          && r.id is string && r.id.size() <= 40
+          && r.get('uid', '') is string && r.get('uid', '').size() <= 128
+          && r.get('name', '') is string && r.get('name', '').size() <= 40
+          && r.get('text', '') is string && r.get('text', '').size() <= 160;
+    }
+
+    // Signed with the sender's own account and stamped with the server's
+    // clock, so nobody can post as someone else or backdate a message.
+    function msgOk(d) {
+      return d.keys().hasOnly(['uid', 'name', 'text', 'createdAt', 'media', 'mediaKind', 'w', 'h', 'sticker', 'replyTo'])
+          && d.uid == request.auth.uid
+          && d.name is string && d.name.size() > 0 && d.name.size() <= 40
+          && d.text is string && d.text.size() <= 2000
+          && d.createdAt == request.time
+          && (!('media' in d) || (d.media is string && d.media.size() > 0 && d.media.size() <= 40))
+          && (!('mediaKind' in d) || d.mediaKind in ['image', 'gif'])
+          && (!('w' in d) || (d.w is int && d.w > 0 && d.w <= 8192))
+          && (!('h' in d) || (d.h is int && d.h > 0 && d.h <= 8192))
+          && (!('sticker' in d) || (d.sticker is string && d.sticker.size() > 0 && d.sticker.size() <= 32))
+          && (!('replyTo' in d) || replyOk(d.replyTo))
+          && (d.text.size() > 0 || 'media' in d || 'sticker' in d);
+    }
+
+    // Anyone who can see a message can put one reaction of their own on it,
+    // and change or remove only that one.
+    function reactionOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+          && request.resource.data.reactions is map
+          && request.resource.data.reactions.size() <= 60
+          && request.resource.data.reactions.diff(resource.data.get('reactions', {})).affectedKeys().hasOnly([request.auth.uid])
+          && (!(request.auth.uid in request.resource.data.reactions)
+              || (request.resource.data.reactions[request.auth.uid] is string
+                  && request.resource.data.reactions[request.auth.uid].size() <= 16));
+    }
+
+    // The sender can fix a typo; the message is marked as edited.
+    function ownEdit() {
+      return resource.data.uid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'edited'])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 2000
+          && request.resource.data.edited == true;
+    }
+
     // ---- site configuration ---------------------------------------------
     // The banner, the notebook intro and the subject key. Everyone reads it;
     // only admins change it.
@@ -79,10 +143,16 @@ service cloud.firestore {
     }
 
     // Who is an admin. Readable so the page can grey out controls it knows
-    // will fail; only the owner can hand out admin rights.
+    // will fail; only an owner can hand out admin rights.
     match /config/admins {
       allow read:  if mayUseHub();
       allow write: if isOwner();
+    }
+
+    // Chat timeouts.
+    match /config/moderation {
+      allow read:  if mayUseHub();
+      allow write: if isAdmin();
     }
 
     // ---- announcements ---------------------------------------------------
@@ -103,8 +173,8 @@ service cloud.firestore {
 
       // Listing is the important half. A query only succeeds if the server
       // can prove every result is public, so link-only notes genuinely cannot
-      // be discovered by browsing — the secrecy is enforced, not cosmetic.
-      // The page's own author query is allowed too, so you can find your own.
+      // be discovered by browsing. The page's own author query is allowed
+      // too, so you can find your own.
       allow list: if mayUseHub() && (
                     resource.data.visibility == 'public' || existingIsMine()
                   );
@@ -115,44 +185,42 @@ service cloud.firestore {
                     && request.resource.data.title is string
                     && request.resource.data.title.size() <= 200
                     && request.resource.data.body is string
-                    && request.resource.data.body.size() <= 100000;
+                    && request.resource.data.body.size() <= 100000
+                    && imagesOk(request.resource.data);
 
-      // Anyone signed in may tick a checkbox on a public note — that is the
-      // point of a shared checklist — but only the author or an admin may
+      // Anyone signed in may tick a checkbox on a public note (that is the
+      // point of a shared checklist) but only the author or an admin may
       // rewrite or retitle one.
-      allow update: if mayUseHub() && (
+      allow update: if mayUseHub() && imagesOk(request.resource.data) && (
                       isAdmin() ||
                       (existingIsMine() && keepsAuthor()) ||
                       (resource.data.visibility == 'public'
                         && keepsAuthor()
                         && request.resource.data.title == resource.data.title
-                        && request.resource.data.visibility == resource.data.visibility)
+                        && request.resource.data.visibility == resource.data.visibility
+                        && request.resource.data.get('images', []) == resource.data.get('images', []))
                     );
 
       allow delete: if isAdmin() || existingIsMine();
     }
 
-    // ---- private notes ---------------------------------------------------
-    // Under your own uid. No one else can read these — not classmates, not
-    // admins, not the owner. This is what makes "private" mean something.
+    // ---- your own space --------------------------------------------------
+    // Private notes, what you've finished, and your chat settings (muted and
+    // hidden conversations). Under your own uid; nobody else can read them.
 
     match /users/{uid}/private/{noteId} {
       allow read, write: if signedIn() && request.auth.uid == uid;
     }
 
-    // ---- what YOU have finished ------------------------------------------
-    // One document per assignment you've ticked off, under your own uid.
-    // Nobody else can read it, so the class can share a list of work without
-    // anyone being able to see who is behind on it.
-
     match /users/{uid}/done/{assignmentId} {
       allow read, write: if signedIn() && request.auth.uid == uid;
     }
 
+    match /users/{uid}/prefs/{docId} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
     // ---- assignments -----------------------------------------------------
-    // The work itself is the class's: everyone reads it, anyone signed in can
-    // add one, and only the person who posted it (or an admin) can change it.
-    // Nothing about anyone's submission state lives here.
 
     match /assignments/{id} {
       allow read: if mayUseHub();
@@ -181,9 +249,8 @@ service cloud.firestore {
 
     // ---- profiles --------------------------------------------------------
     // A display name and a small photo per person, stored as text on the
-    // document (the free plan has no file storage). Only you can write
-    // yours; the photo has to be a small base64 WebP, JPEG or PNG image.
-    // Admins can remove a profile if something inappropriate goes up.
+    // document. Only you can write yours. Admins can remove a profile if
+    // something inappropriate goes up.
 
     match /profiles/{uid} {
       allow read: if mayUseHub();
@@ -205,28 +272,190 @@ service cloud.firestore {
       allow delete: if (signedIn() && request.auth.uid == uid) || isAdmin();
     }
 
-    // ---- class chat ------------------------------------------------------
-    // One room. A message must be signed with the sender's own account and
-    // stamped with the server's clock, so nobody can post as someone else or
-    // backdate one. Messages can't be edited; the sender or an admin can
-    // delete them.
+    // ---- the people directory ---------------------------------------------
+    // Written by each person's own page when they sign in. The email has to
+    // be the one on their account, so nobody can list a fake address. Anyone
+    // can hide theirs; then the email is stored empty.
 
-    match /chat/{msgId} {
+    match /directory/{uid} {
       allow read: if mayUseHub();
 
-      allow create: if mayUseHub()
-                    && request.resource.data.keys().hasOnly(['uid', 'name', 'text', 'createdAt'])
-                    && request.resource.data.uid == request.auth.uid
+      allow create, update: if signedIn()
+                    && request.auth.uid == uid
+                    && request.resource.data.keys().hasOnly(['name', 'email', 'listed', 'lastSeen', 'updatedAt'])
                     && request.resource.data.name is string
                     && request.resource.data.name.size() > 0
                     && request.resource.data.name.size() <= 40
-                    && request.resource.data.text is string
-                    && request.resource.data.text.size() > 0
-                    && request.resource.data.text.size() <= 800
-                    && request.resource.data.createdAt == request.time;
+                    && request.resource.data.listed is bool
+                    && ((request.resource.data.listed == true && request.resource.data.email == myEmail())
+                        || (request.resource.data.listed == false && request.resource.data.email == ''))
+                    && request.resource.data.lastSeen == request.time
+                    && request.resource.data.updatedAt is string
+                    && request.resource.data.updatedAt.size() <= 40;
+
+      allow delete: if (signedIn() && request.auth.uid == uid) || isAdmin();
+    }
+
+    // ---- the class room ----------------------------------------------------
+
+    match /chat/{msgId} {
+      allow read: if mayUseHub();
+      allow create: if mayUseHub() && msgOk(request.resource.data) && !chatBlocked();
+      allow update: if mayUseHub() && (reactionOnly() || ownEdit());
+      allow delete: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+    }
+
+    // ---- private chats and group chats ------------------------------------
+    // A DM's id is built from the two people in it (dm_<uid>_<uid>, sorted),
+    // so there is only ever one per pair. Only the people in a conversation
+    // can read it. Owners and admins can read everything so that nothing
+    // harmful goes unnoticed; the chat window tells everyone this.
+
+    function convoOf(cid) {
+      return get(/databases/$(database)/documents/convos/$(cid)).data;
+    }
+
+    function lastOk(l) {
+      return l is map
+          && l.keys().hasOnly(['uid', 'name', 'text', 'at'])
+          && l.uid == request.auth.uid
+          && l.name is string && l.name.size() <= 40
+          && l.text is string && l.text.size() <= 160
+          && l.at == request.time;
+    }
+
+    function groupNameOk(d) {
+      return d.name is string && d.name.size() > 0 && d.name.size() <= 60;
+    }
+
+    function membersOk(m) {
+      return m is list && m.size() >= 1 && m.size() <= 40 && m.toSet().size() == m.size();
+    }
+
+    match /convos/{cid} {
+      // A missing DM can be looked up by one of its two people, so the page
+      // can tell "not started yet" from "not allowed".
+      allow get: if signedIn() && (
+                    (resource == null && request.auth.uid in cid.split('_'))
+                    || (resource != null && request.auth.uid in resource.data.members)
+                    || isAdmin());
+
+      allow list: if signedIn() && (request.auth.uid in resource.data.members || isAdmin());
+
+      allow create: if mayUseHub()
+                    && request.resource.data.keys().hasOnly(['type', 'members', 'name', 'createdBy', 'createdAt', 'updatedAt', 'color'])
+                    && request.resource.data.createdBy == request.auth.uid
+                    && membersOk(request.resource.data.members)
+                    && request.auth.uid in request.resource.data.members
+                    && request.resource.data.members.size() >= 2
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.updatedAt == request.time
+                    && (
+                      (request.resource.data.type == 'dm'
+                        && request.resource.data.members.size() == 2
+                        && request.resource.data.members[0] < request.resource.data.members[1]
+                        && cid == 'dm_' + request.resource.data.members[0] + '_' + request.resource.data.members[1])
+                      ||
+                      (request.resource.data.type == 'group'
+                        && groupNameOk(request.resource.data)
+                        && cid.matches('g_[A-Za-z0-9]{8,40}'))
+                    );
+
+      allow update: if signedIn() && (
+                      isAdmin()
+                      || (request.auth.uid in resource.data.members && (
+                        // sending a message bumps the preview line
+                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['last', 'updatedAt'])
+                          && request.resource.data.updatedAt == request.time
+                          && lastOk(request.resource.data.last))
+                        // anyone in a group can rename it or add people
+                        || (resource.data.type == 'group'
+                          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'members', 'updatedAt', 'color'])
+                          && groupNameOk(request.resource.data)
+                          && membersOk(request.resource.data.members)
+                          && request.resource.data.members.hasAll(resource.data.members))
+                        // the person who made a group can also remove people
+                        || (resource.data.type == 'group'
+                          && resource.data.createdBy == request.auth.uid
+                          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'members', 'updatedAt', 'color'])
+                          && groupNameOk(request.resource.data)
+                          && membersOk(request.resource.data.members)
+                          && request.auth.uid in request.resource.data.members)
+                        // anyone can leave a group
+                        || (resource.data.type == 'group'
+                          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'updatedAt'])
+                          && request.resource.data.members.toSet() == resource.data.members.toSet().difference([request.auth.uid].toSet()))
+                      ))
+                    );
+
+      allow delete: if isAdmin()
+                    || (signedIn() && resource.data.type == 'group' && resource.data.createdBy == request.auth.uid);
+
+      match /messages/{mid} {
+        allow read: if signedIn() && (request.auth.uid in convoOf(cid).members || isAdmin());
+        allow create: if mayUseHub()
+                      && request.auth.uid in convoOf(cid).members
+                      && msgOk(request.resource.data)
+                      && !chatBlocked();
+        allow update: if signedIn()
+                      && (request.auth.uid in convoOf(cid).members || isAdmin())
+                      && (reactionOnly() || ownEdit());
+        allow delete: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      }
+    }
+
+    // ---- pictures ----------------------------------------------------------
+    // The free plan has no file storage, so a picture is stored as text in
+    // its own document and messages and notes point at it by id. Who can
+    // open one depends on where it was posted: the class, one conversation,
+    // or only its owner (a private note).
+
+    match /media/{id} {
+      allow get: if signedIn() && (
+                    (resource.data.scope == 'hub' && mayUseHub())
+                    || (resource.data.scope == 'user' && resource.data.uid == request.auth.uid)
+                    || (resource.data.scope == 'convo' && request.auth.uid in convoOf(resource.data.cid).members)
+                    || isAdmin());
+      allow list: if isAdmin();
+
+      allow create: if mayUseHub()
+                    && request.resource.data.keys().hasOnly(['uid', 'scope', 'cid', 'kind', 'data', 'w', 'h', 'createdAt'])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.kind in ['image', 'gif']
+                    && request.resource.data.data is string
+                    && request.resource.data.data.size() <= 950000
+                    && request.resource.data.data.split(',')[0] in
+                         ['data:image/jpeg;base64', 'data:image/webp;base64', 'data:image/png;base64', 'data:image/gif;base64']
+                    && request.resource.data.w is int && request.resource.data.w > 0 && request.resource.data.w <= 8192
+                    && request.resource.data.h is int && request.resource.data.h > 0 && request.resource.data.h <= 8192
+                    && (request.resource.data.scope in ['hub', 'user']
+                        || (request.resource.data.scope == 'convo'
+                            && request.resource.data.cid is string
+                            && request.auth.uid in convoOf(request.resource.data.cid).members));
 
       allow update: if false;
-      allow delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow delete: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+    }
+
+    // ---- the class GIF library --------------------------------------------
+    // A small still preview for the picker; the moving picture itself is a
+    // media document.
+
+    match /gifs/{id} {
+      allow read: if mayUseHub();
+      allow create: if mayUseHub()
+                    && request.resource.data.keys().hasOnly(['uid', 'name', 'media', 'thumb', 'w', 'h', 'createdAt'])
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.name is string && request.resource.data.name.size() <= 40
+                    && request.resource.data.media is string && request.resource.data.media.size() <= 40
+                    && request.resource.data.thumb is string && request.resource.data.thumb.size() <= 40000
+                    && request.resource.data.thumb.split(',')[0] in
+                         ['data:image/jpeg;base64', 'data:image/webp;base64', 'data:image/png;base64']
+                    && request.resource.data.w is int && request.resource.data.h is int
+                    && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
     }
 
     // ---- help board ------------------------------------------------------

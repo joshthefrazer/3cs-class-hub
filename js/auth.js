@@ -1,7 +1,7 @@
 import { BE, signIn, signOutNow, toast, usingFirebase } from "./backend.js";
 
 /* =========================================================
-   SIGNING IN — Google, or an email and a password.
+   SIGNING IN, Google, or an email and a password.
 
    Google is the nicer route when it works: the name and photo come with it
    and there is no password to forget. But a school Google Workspace can
@@ -104,13 +104,13 @@ function authErrMsg(err){
   var c = (err && err.code) || "";
   if (c === "auth/invalid-email")            return "That doesn't look like an email address.";
   if (c === "auth/missing-password")         return "Type your password too.";
-  if (c === "auth/weak-password")            return "That password is too short — use at least six characters.";
+  if (c === "auth/weak-password")            return "That password is too short. Use at least six characters.";
   if (c === "auth/email-already-in-use")     return "There's already an account on that email. Sign in instead, or reset the password.";
   if (c === "auth/invalid-credential" ||
       c === "auth/wrong-password" ||
       c === "auth/user-not-found")           return "That email and password don't match an account.";
   if (c === "auth/too-many-requests")        return "Too many tries. Wait a few minutes and go again.";
-  if (c === "auth/network-request-failed")   return "Couldn't reach the server — check your connection.";
+  if (c === "auth/network-request-failed")   return "Couldn't reach the server. Check your connection.";
   if (c === "auth/operation-not-allowed")    return "Email sign-in isn't switched on for this Hub yet.";
   if (c === "auth/user-disabled")            return "That account has been disabled.";
   return (err && err.message) ? err.message.replace(/^Firebase:\s*/, "") : "Couldn't sign in.";
@@ -135,7 +135,7 @@ function submit(){
     BE.auth.sendPasswordResetEmail(email)
       .then(function(){
         lock(false, "Send the link");
-        setNote("Sent. Check that inbox — the link works once.");
+        setNote("Sent. Check that inbox. The link works once.");
         setErr("");
       })
       .catch(function(err){ lock(false, "Send the link"); setErr(authErrMsg(err)); });
@@ -151,6 +151,15 @@ function submit(){
       .then(function(cred){
         /* Without this every post would be signed with an email address. */
         return cred.user.updateProfile({ displayName: name }).then(function(){
+          /* The account existed a moment before it had a name, so put the
+             name everywhere the class will see it now. */
+          if (BE.user && BE.user.id === cred.user.uid) BE.user.name = name;
+          var saveProfile = BE.db.doc("profiles/" + cred.user.uid).set({ name: name.slice(0, 40), photo: "", updatedAt: new Date().toISOString() })
+            .catch(function(){});
+          return saveProfile.then(function(){
+            return import("./people.js").then(function(m){ return m.touchDirectory(true); });
+          }).then(function(){ import("./backend.js").then(function(m){ m.paintAuth(); }); });
+        }).then(function(){
           /* Best effort - a bounced verification email should not stop anyone
              using the Hub, it only matters if we later restrict by domain. */
           return cred.user.sendEmailVerification().catch(function(){});

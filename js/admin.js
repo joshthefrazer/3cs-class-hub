@@ -13,6 +13,9 @@ import { replayReveal } from "./fx.js";
 import { wireAuthSheet, openAuthSheet } from "./auth.js";
 import { openWorkSheet, closeWorkSheet, saveWork, deleteWork, renderWork, renderWorkFilters } from "./work.js";
 import { syncClassroom, classroomLabel } from "./classroom.js";
+import { renderPeople } from "./people.js";
+import { openChat } from "./chat.js";
+import { openMoreSheet, openSettings, openWhatsNew } from "./settings.js";
 
 /* =========================================================
    7. Admin mode + tabs + wiring
@@ -55,18 +58,18 @@ function paintTrustNotes(){
     nb.innerHTML =
       "<strong>Public</strong> notes are visible to everyone signed in. " +
       "<strong>Link only</strong> notes are kept out of the list by the server, so they open only for someone who has the link. " +
-      "<strong>Private</strong> notes are stored under your account and the security rules stop anyone else reading them — including admins — and they follow you between devices. " +
-      "Names come from your Google account, so posts carry a real one.";
+      "<strong>Private</strong> notes are stored under your account and the security rules stop anyone else reading them (admins included), and they follow you between devices. " +
+      "Names come from each person's Hub profile.";
     hb.innerHTML =
-      "Everyone signed in can post, reply and react. Your name comes from your Google account, and the server only lets you edit or delete your own posts — admins can moderate anything.";
+      "Everyone signed in can post, reply and react. Your name comes from your Hub profile, and the server only lets you edit or delete your own posts. Admins can moderate anything.";
   } else {
     nb.innerHTML =
       "<strong>Public</strong> notes are visible to everyone who can open this Hub. " +
-      "<strong>Link only</strong> notes stay out of the list, but anyone signed in who has the link can open one — that's secrecy, not a lock. " +
+      "<strong>Link only</strong> notes stay out of the list, but anyone signed in who has the link can open one. That's secrecy, not a lock. " +
       "<strong>Private</strong> notes never leave this browser: they won't show up on your phone, and no one, admins included, can recover them. " +
       "This copy can't verify who anyone is, so shared editing runs on class trust.";
     hb.innerHTML =
-      "Everyone signed in can post, reply, and react here. Names are self-chosen and unverified, so a classmate could in theory edit or remove someone else's post — " +
+      "Everyone signed in can post, reply, and react here. Names are self-chosen and unverified, so a classmate could in theory edit or remove someone else's post, " +
       "admins can clean up anything that goes wrong.";
   }
 }
@@ -81,19 +84,19 @@ function checkNoteHash(){
 
 function setTab(name){
   state.tab = name;
-  document.querySelectorAll("nav.tabs button").forEach(function(b){
-    var on = b.getAttribute("data-tab")===name;
+  document.querySelectorAll("nav.tabs button, #bottomNav button[data-tab]").forEach(function(b){
+    var on = b.getAttribute("data-tab") === name;
     b.classList.toggle("active", on);
     if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
   });
   document.querySelectorAll("section.panel").forEach(function(s){
-    s.classList.toggle("active", s.id==="tab-"+name);
+    s.classList.toggle("active", s.id === "tab-" + name);
   });
   document.body.setAttribute("data-world", name);
   if (name === "work"){ renderWorkFilters(); renderWork(); }
+  if (name === "people") renderPeople();
   updateTabInk();
-  renderHero(name);
-  if (name === "schedule") renderDayBar();
+  if (name === "schedule"){ renderHero(); renderDayBar(); }
   /* During a view transition the new panel slides in whole; the staggered
      reveal is for the plain fallback. */
   if (!document.documentElement.classList.contains("vt-active")) replayReveal();
@@ -109,14 +112,22 @@ function wire(){
     var btn = e.target.closest("button[data-tab]");
     if (btn) warpTo(btn.getAttribute("data-tab"));
   });
+  var bn = document.getElementById("bottomNav");
+  if (bn) bn.addEventListener("click", function(e){
+    var btn = e.target.closest("button");
+    if (!btn) return;
+    if (btn.dataset.tab){ warpTo(btn.dataset.tab); return; }
+    if (btn.dataset.action === "chat") openChat();
+    if (btn.dataset.action === "more") openMoreSheet();
+  });
+  var setB = document.getElementById("settingsBtn");
+  if (setB) setB.addEventListener("click", function(){ openSettings(); });
+  var wn = document.getElementById("whatsNewBtn");
+  if (wn) wn.addEventListener("click", function(){ openWhatsNew(); });
   var brand = document.getElementById("brandHome");
   if (brand) brand.addEventListener("click", function(e){ e.preventDefault(); warpTo("schedule"); });
   var dueAll = document.getElementById("dueAllBtn");
   if (dueAll) dueAll.addEventListener("click", function(){ warpTo("work"); });
-  document.getElementById("heroCtaBtn").addEventListener("click", function(){
-    var card = document.getElementById("lineupCard");
-    if (card) card.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block:"start" });
-  });
 
   wireAuthSheet();
 
@@ -162,11 +173,12 @@ function wire(){
     document.getElementById("adminModeCheck").checked = state.adminMode;
     document.getElementById("adminSheetBody").textContent =
       state.dbReady
-        ? "Edit controls are gated by this Hub's real sharing permissions — turning this on just reveals the buttons on your device."
+        ? "Edit controls are gated by this Hub's real sharing permissions. Turning this on just reveals the buttons on your device."
         : "This view can't reach live editing right now, so saves won't go through even with edit controls showing.";
     sheet.hidden = false;
   });
   document.getElementById("adminSheetClose").addEventListener("click", function(){ sheet.hidden = true; });
+  sheet.addEventListener("click", function(e){ if (e.target === sheet) sheet.hidden = true; });
   document.getElementById("adminSheetOk").addEventListener("click", function(){ sheet.hidden = true; });
   var passField = document.getElementById("adminPass");
   function tryUnlock(){
@@ -217,6 +229,16 @@ function wire(){
   });
 
   /* --- help board --- */
+  document.querySelectorAll('input[name="postKindR"]').forEach(function(r){
+    r.addEventListener("change", function(){
+      var sel = document.getElementById("postKind");
+      if (sel && r.checked) sel.value = r.value;
+      var inp = document.getElementById("postInput");
+      if (inp) inp.placeholder = r.value === "reminder"
+        ? "e.g. Bring the signed permission slip for the trip on Day 3"
+        : "e.g. Does anyone remember which pages of the M homework are due Day 4?";
+    });
+  });
   document.getElementById("postBtn").addEventListener("click", postHelp);
   document.getElementById("postAsBtn").addEventListener("click", function(){
     if (usingFirebase()){

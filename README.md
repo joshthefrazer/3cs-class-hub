@@ -1,91 +1,47 @@
 # 3CS Class Hub
 
-Schedule, calendar, shared notebook and help board for **3CS at Itz'at STEAM Academy**, 2026–2027.
+The class website for **3CS at Itz'at STEAM Academy**, 2026-2027: today's classes, what's due, class notes, the help board, the calendar, everyone's school email, and a class chat with private and group messages.
 
-One self-contained `index.html`. No build step, no dependencies to install, no server required — open the file and it runs.
+Concept by Joshua Malic, with help from Alejhandro Morales and Stoney Jones. The code was written by Claude, an AI.
+
+Live at https://joshthefrazer.github.io/3cs-class-hub/
 
 ---
 
 ## What's inside
 
-**Schedule** — today's cycle day, a live "time left in class" countdown, today's six sessions, the full seven-day rotation, all three bell schedules, and a subject key.
+- **Today**: the cycle day, a live "right now" card with a countdown, the whole day as a ruler with a marker that moves in real time, what's due, a peek at the class chat, app shortcuts, what to pack for the next school day, the weekly timetable, bell times and the subject key.
+- **Work**: assignments, soonest first. Your ticks are private to your account.
+- **Notes**: a shared notebook with light formatting, checklists, pictures, and public, link-only or private notes.
+- **Help**: questions and reminders, with replies and reactions.
+- **Calendar**: every month of the school year, with cycle days, holidays, quick exits and half days.
+- **News**: announcements and a sitewide banner, posted by admins.
+- **People**: everyone who has signed in, with their school email. Pick people to email them together in Gmail, copy addresses, or start a chat. Anyone can hide their email in Settings.
+- **Messages**: the 3CS class room, private chats and group chats. Emoji, 22 animated stickers made for the Hub, a class GIF library, pictures, reactions, replies, @mentions, editing, muting, hiding and pinning, and pop-up notifications at the side.
+- **Campus background**: real photos of the Itz'at campus behind every page, a different spot for each section (or one a day, or plain graph paper, in Settings). Photos by the Ministry of Education, Culture, Science and Technology, Belize, from their [opening-day album](https://www.flickr.com/photos/193643118@N04/albums/72177720317011818). They live in `assets/campus`; the list is in `js/campus.js`.
+- **Settings**: theme, motion, background, the welcome animation, notifications, email privacy.
+- **Welcome animation**: what's new, the credits, and the welcome. It plays on the first visit each day by default.
 
-**Calendar** — every month from August 2026 to June 2027, built from the school's official calendar: cycle days, holidays, quick exits, half days, asynchronous days, quarter boundaries.
+## How it's built
 
-**Notebook** — shared class notes with light Markdown, subject tags, and per-note visibility.
+Plain HTML, CSS and JavaScript modules. No build step. Data lives in Firebase (Firestore and Authentication) on the free plan. Pictures are shrunk in the browser and stored as small documents, because the free plan has no file storage.
 
-**Help Board** — questions and reminders, threaded replies, reactions, resolved/unresolved.
+`firestore.rules` is the real security boundary. It has to be published in the Firebase Console (Firestore Database, Rules, Publish) whenever it changes.
 
----
+## Admins
 
-## Quick-exit and half-day handling
+Two accounts are always owners and can see and moderate everything, including private chats: `joshthefrazer@gmail.com` and `joshua.malic@sls.edu.bz`. They're listed in `firestore.rules` (`isOwner`) and in `index.html` (`HUB_OWNERS`), which must match. Other admins can be added by an owner through the `config/admins` document.
 
-The Hub reads each day's entry in the calendar and switches bell schedules to match, because "Session 3" is a different slot depending on the day:
+Admins can delete any message, pause someone's chat access (Settings, Moderation), read every conversation, post announcements and edit the site's timetable, calendar and bell times.
 
-| | Sessions | Session 3 | Day ends |
-|---|---|---|---|
-| Regular | 6 | 10:05–11:00 | 3:15 |
-| Quick exit | 6 (50 min each) | 9:55–10:45 | 2:10 |
-| Half day | **1–4 only** | 10:05–11:00 | 12:20 (staff PLC at 1:00) |
+## Updating the "What's new" list
 
-On any day that isn't a regular one, a banner names the schedule and what changes. Half days are detected from the calendar's own "1/2 Day" wording rather than assuming Day 7, since several half days in May and June fall on other cycle days.
+Add an entry at the top of `js/updates.js`, and change `window.HUB_VERSION` near the top of `index.html` to the same version, so people who chose "only after updates" see the animation once.
 
----
+## Editing the schedule data
 
-## Two places this file can run
-
-This matters, so read it before hosting.
-
-### On the live Hub (claude.ai artifact)
-
-Everything works. The notebook, announcements, help board and admin editing run on a shared database that the claude.ai viewer provides to the page at runtime.
-
-### As a static copy (GitHub Pages, a local file, any other host)
-
-The runtime the collaborative features depend on **does not exist outside the claude.ai viewer**. There is no API key to add and no configuration that turns it on — it is provided by the host page, not by this file.
-
-What still works: the schedule, the live class countdown, the full calendar, all three bell schedules, the subject key. Genuinely useful as a read-only reference.
-
-What does not: the notebook, announcements, help board, admin editing. The page detects this and shows a notice bar linking to the live Hub instead of failing silently.
-
-If you want the collaborative side on your own domain, it needs a real backend — the page would have to be rewritten against something like Firebase or Supabase. Happy to do that; it's a different piece of work, not a setting.
-
----
+`js/data.js` holds the printed calendar (`CAL`), the 3CS rotation (`SCHED`), the bell schedules (`BELL_MODES`, `BELL`) and the subject key (`DEFAULT_LEGEND`). Admins can also change most of it live from the site editor without touching code.
 
 ## Hosting on GitHub Pages
 
-1. Push this repo to GitHub.
-2. **Settings → Pages → Source:** deploy from branch, `main`, folder `/ (root)`.
-3. It'll be live at `https://<username>.github.io/<repo>/` in a minute or two.
-
----
-
-## Admin passcode
-
-Admin mode is behind a passcode. It is stored in the page as a hash rather than plain digits, and unlocking is remembered per device.
-
-**Be clear on what this is.** It is a lock on the *interface* — it keeps edit buttons out of the way of thirty classmates. It is not security. The passcode travels to every visitor as part of the page, so anyone who reads the source or the browser console can get past it. Do not treat it as protecting anything that matters.
-
-What actually controls who can change shared data is the Hub's sharing permission on claude.ai: the owner shares the artifact with someone as **can edit** to make them a real admin. That check happens on the server, not in this file.
-
----
-
-## Editing the data
-
-Everything is plain JavaScript near the top of the `<script>` block in `index.html`:
-
-- `CAL` — one entry per date: `{ day, kind, events[] }`, where `kind` is `holiday`, `async`, `quickexit`, `halfday` or absent.
-- `SCHED` — the 3CS rotation, keyed by cycle day 1–7, six entries each: `{ c: subject, r: room, t: teacher }`.
-- `BELL_MODES` — session times for the regular, quick-exit and half-day schedules.
-- `DEFAULT_LEGEND` — subject codes and their full names. Several are intentionally blank because they weren't documented anywhere; fill them in rather than guessing.
-
----
-
-## Known discrepancy
-
-The 3CS class timetable and the school's bell-schedule page disagree about Session 6:
-
-- Class timetable: **2:05–3:00**
-- School bell schedule: **2:00–2:55**
-
-This file uses the class timetable. Worth confirming which is correct.
+Settings, Pages, deploy from branch `main`, folder `/ (root)`.

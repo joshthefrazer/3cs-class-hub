@@ -1,7 +1,7 @@
 import { REDUCED } from "./orbit.js";
 
 /* =========================================================
-   FX — the motion layer.
+   FX. The motion layer.
 
    Everything here is decoration, so everything here is optional: each piece
    checks prefers-reduced-motion first and simply doesn't run, and none of it
@@ -133,12 +133,76 @@ function initRipple(){
   }, { passive:true });
 }
 
+/* ------------------------------------------------ the campus, in depth -- */
+
+/* The campus photo drifts a few pixels against the pointer, so the page
+   feels like a window onto the building rather than a flat picture. Mouse
+   and trackpad only; touch screens have nothing to follow. */
+function initDepth(){
+  if (REDUCED || !window.matchMedia("(pointer: fine)").matches) return;
+  var bg = document.getElementById("campusBg");
+  if (!bg) return;
+  onPointer(function(p){
+    var x = (p.x / window.innerWidth) * 2 - 1, y = (p.y / window.innerHeight) * 2 - 1;
+    bg.style.setProperty("--px", x.toFixed(3));
+    bg.style.setProperty("--py", y.toFixed(3));
+  });
+}
+
+/* A soft light follows the pointer across whichever card it is over. */
+var SPOT = ".card, .work-card, .note-card, .stat, .person, .post, .announce-item, .rl-block";
+function initSpotlight(){
+  if (REDUCED || !window.matchMedia("(pointer: fine)").matches) return;
+  var lit = null;
+  onPointer(function(p, e){
+    var t = e.target && e.target.closest ? e.target.closest(SPOT) : null;
+    if (lit && lit !== t){ lit.classList.remove("spot-on"); lit = null; }
+    if (!t) return;
+    var r = t.getBoundingClientRect();
+    t.style.setProperty("--mx", (p.x - r.left) + "px");
+    t.style.setProperty("--my", (p.y - r.top) + "px");
+    if (lit !== t){ t.classList.add("spot-on"); lit = t; }
+  });
+  document.addEventListener("pointerleave", function(){ if (lit){ lit.classList.remove("spot-on"); lit = null; } });
+}
+
+/* ------------------------------------------------------- back to top ---- */
+
+/* Shows once you are a screen and a half down, and takes you home. */
+function initBackToTop(){
+  var b = document.createElement("button");
+  b.type = "button";
+  b.className = "to-top";
+  b.id = "toTop";
+  b.setAttribute("aria-label", "Back to the top");
+  b.title = "Back to the top";
+  b.innerHTML = '<svg class="ic" aria-hidden="true"><use href="#i-arrow-down"></use></svg>';
+  b.addEventListener("click", function(){
+    window.scrollTo({ top: 0, behavior: REDUCED ? "instant" : "smooth" });
+    var h = document.querySelector("section.panel.active h1, section.panel.active h2");
+    if (h){ h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); }
+  });
+  document.body.appendChild(b);
+  var mark = document.createElement("div");
+  mark.setAttribute("aria-hidden", "true");
+  mark.style.cssText = "position:absolute;left:0;top:0;width:1px;height:150vh;pointer-events:none";
+  document.body.appendChild(mark);
+  if (!("IntersectionObserver" in window)) return;
+  new IntersectionObserver(function(en){
+    // once none of the first screen and a half is in view, you're far enough down
+    b.classList.toggle("show", !en[0].isIntersecting);
+  }).observe(mark);
+}
+
 /* ---------------------------------------------------------------- boot --- */
 
 function initFx(){
   initPointerBus();
   initReveal();
   initRipple();
+  initDepth();
+  initSpotlight();
+  initBackToTop();
 }
 
 export { initFx, replayReveal, onPointer };

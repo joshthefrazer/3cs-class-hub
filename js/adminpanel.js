@@ -7,7 +7,7 @@ import {
 import { SCHED, CAL, BELL_MODES, DEFAULT_LEGEND, MONTH_NAMES } from "./data.js";
 
 /* =========================================================
-   SITE EDITOR — the admin console.
+   SITE EDITOR. The admin console.
 
    This is the "edit the site like you're coding it" half of the Hub. Every
    panel here writes into the single config/site document, which every open
@@ -25,7 +25,7 @@ var collect = null;        // panel-supplied () -> { patch } | null when invalid
 var dirty = false;
 
 var PANELS = [
-  { key:"timetable", label:"Timetable", icon:"i-grid",  render: panelTimetable, field:"schedule" },
+  { key:"timetable", label:"Timetable", icon:"i-grid",  render: panelTimetable, field:"schedule2" },
   { key:"calendar",  label:"Calendar",  icon:"i-cal",   render: panelCalendar,  field:"events"   },
   { key:"bells",     label:"Bell times",label2:"Bells", icon:"i-clock", render: panelBells, field:"bells" },
   { key:"subjects",  label:"Subjects",  icon:"i-book",  render: panelSubjects,  field:"legend"   },
@@ -152,7 +152,7 @@ function publish(){
   var db = requireDb(); if (!db) return;
   var btn = document.getElementById("consoleSave");
   btn.disabled = true; btn.textContent = "Publishing…";
-  saveConfig(out, "Published — everyone sees it now.");
+  saveConfig(out, "Published. Everyone sees it now.");
   setTimeout(function(){
     btn.disabled = false; btn.textContent = "Publish to everyone";
     clearDirty("Published.");
@@ -162,7 +162,7 @@ function publish(){
 
 function resetSection(){
   var p = PANELS.filter(function(x){ return x.key === current; })[0];
-  if (!window.confirm("Drop this section's edits and go back to the printed 2026–2027 calendar?")) return;
+  if (!window.confirm("Drop this section's edits and go back to the printed 2026-2027 calendar?")) return;
   var patch = {};
   patch[p.field] = p.field === "globalBanner" ? null : {};
   saveConfig(patch, "Reset to the printed version.");
@@ -181,7 +181,7 @@ function panelTimetable(body){
 
   body.appendChild(intro(
     "The seven-day cycle",
-    "Pick a cycle day, then set what each session is. Codes are the short ones the timetable uses — the Subjects panel is where a code gets its full name."
+    "Pick a cycle day, then set what each session is. Codes are the short ones the timetable uses. The Subjects panel is where a code gets its full name."
   ));
 
   var chips = el("div", "console-chips");
@@ -207,7 +207,7 @@ function panelTimetable(body){
       var r = el("div", "console-row");
       var t = modes.regular.sessions[i];
       r.appendChild(el("div", "console-row-n", "S" + (i + 1) +
-        (t ? "  " + t[0] + "–" + t[1] : "")));
+        (t ? "  " + t[0] + "-" + t[1] : "")));
       var grid = el("div", "console-row-grid");
       var a = input(cell.c, "Code");
       var b = input(cell.r, "Room");
@@ -234,7 +234,7 @@ function panelTimetable(body){
       });
       if (changed) out[d] = draft[d];
     });
-    return { schedule: out };
+    return { schedule2: out };
   };
 }
 
@@ -309,7 +309,7 @@ function panelCalendar(body){
       };
       markDirty();
       paintStaged();
-      toast("Staged — publish to send it out.");
+      toast("Staged. Publish to send it out.");
     });
     var clear = el("button", "btn ghost sm", "Clear this date");
     clear.type = "button";
@@ -460,7 +460,7 @@ function panelSubjects(body){
 
   body.appendChild(intro(
     "What the codes mean",
-    "The short code is what shows in the timetable; the name is what appears under it and in the subject filters. A code the timetable still teaches stays on this list even if you remove it here — take it out of the Timetable panel first."
+    "The short code is what shows in the timetable; the name is what appears under it and in the subject filters. A code the timetable still teaches stays on this list even if you remove it here. Take it out of the Timetable panel first."
   ));
 
   var rows = el("div", "console-rows");
@@ -516,7 +516,7 @@ function panelBanner(body){
   var title = input(b.title || "", "Notice");
   var txt = document.createElement("textarea");
   txt.value = b.text || "";
-  txt.placeholder = "No school Monday — Independence Day.";
+  txt.placeholder = "No school Monday, Independence Day.";
   txt.style.minHeight = "92px";
   txt.addEventListener("input", markDirty);
 

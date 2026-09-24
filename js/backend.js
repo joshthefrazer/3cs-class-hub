@@ -3,7 +3,7 @@ import { renderAnnouncements, renderGlobalBanner } from "./ann.js";
 import { renderHelp } from "./help.js";
 import { renderNotebook, renderNotebookIntro } from "./notebook.js";
 import { renderLegend, renderSubjectSelectors } from "./sched.js";
-import { renderWork, renderWorkFilters, paintWorkChip, loadLocalDone } from "./work.js";
+import { renderWork, renderWorkFilters, paintWorkChip, loadLocalDone, renderDueSoon } from "./work.js";
 import { state } from "./state.js";
 import { bumpLive } from "./live.js";
 import { renderLiveConfig } from "./orbit.js";
@@ -12,7 +12,7 @@ import { paintMe, setProfiles } from "./profile.js";
 import { setChat } from "./chat.js";
 
 /* =========================================================
-   BACKEND — one data layer, two drivers.
+   BACKEND. One data layer, two drivers.
 
      hosted normally (GitHub Pages, Netlify, a local file)
        -> Firebase: Firestore + Google sign-in. Real identity, real
@@ -103,21 +103,21 @@ function toast(msg, isErr){
 function dbErrMsg(err){
   var c = err && err.code;
   if (c === "permission-denied")
-    return "The server refused that change — you don't have permission for it.";
+    return "The server refused that change. You don't have permission for it.";
   if (c === "unauthenticated") return "Sign in first.";
   if (c === "unavailable")     return "Can't reach the server right now. Check your connection.";
   if (c === "not-found")       return "That item no longer exists.";
   if (c === "resource-exhausted")
     return "The Hub has hit today's free usage limit. It resets after midnight.";
   if (c === "failed-precondition")
-    return "The database needs an index for that query — an admin has to create it once.";
+    return "The database needs an index for that query. An admin has to create it once.";
   if (c === "invalid_argument")
-    return "That save was rejected — you may not have permission for it on this account.";
-  if (c === "resource_exhausted") return "Too many updates at once — wait a second and try again.";
+    return "That save was rejected. You may not have permission for it on this account.";
+  if (c === "resource_exhausted") return "Too many updates at once. Wait a second and try again.";
   if (c === "quota_exceeded")     return "The Hub's storage is full. An admin needs to clear out old items.";
   if (c === "not_granted" || c === "capability_disabled" || c === "revoked")
     return "Live saving isn't available in this view.";
-  return "Couldn't save — try again in a moment.";
+  return "Couldn't save. Try again in a moment.";
 }
 function requireDb(){
   if (!state.db){ toast("Live saving isn't available in this view.", true); return null; }
@@ -147,6 +147,17 @@ function mergeField(ref, mapName, key, value){
   inner[key] = value;
   nested[mapName] = inner;
   return ref.update(nested);
+}
+
+/* Feature modules (messages, people, settings) register their own live
+   listeners here instead of this file importing all of them. Each hook
+   gets the db and returns unsubscribe functions. */
+/* Modules can register before this file has finished evaluating (import
+   cycles), so the list survives its own declaration. */
+var streamHooks = streamHooks || [];
+function registerStream(on, off){
+  if (!streamHooks) streamHooks = [];
+  streamHooks.push({ on: on, off: off });
 }
 
 var streams = [];
@@ -207,7 +218,7 @@ function initFirebase(){
     return;
   }
   loadFirebaseSdk().then(startFirebase).catch(function(){
-    toast("Couldn't load the database library — check your connection.", true);
+    toast("Couldn't load the database library. Check your connection.", true);
     showUnconfigured();
   });
 }
@@ -228,14 +239,25 @@ function startFirebase(){
     return;
   }
   try{
+    /* Test harness only: point at the local emulators instead of the real
+       project. Never set on the live site. */
+    var emu = window.__FIREBASE_EMULATOR;
+    if (emu && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) emu = null;
+    if (emu && emu.projectId) cfg = Object.assign({}, cfg, { projectId: emu.projectId });
     if (!firebase.apps.length) firebase.initializeApp(cfg);
     BE.kind = "firebase";
     BE.db   = firebase.firestore();
+    if (emu){
+      BE.db.useEmulator(emu.host || "127.0.0.1", emu.firestorePort || 8080);
+    }
     /* Keep a local copy between visits: the Hub opens instantly on a slow
        connection, and a listener that resumes from the cache only pays for
        what changed. Private windows and old browsers just skip it. */
     try{ BE.db.enablePersistence({ synchronizeTabs: true }).catch(function(){}); }catch(e){}
     BE.auth = firebase.auth();
+    if (emu){
+      BE.auth.useEmulator("http://" + (emu.host || "127.0.0.1") + ":" + (emu.authPort || 9099), { disableWarnings: true });
+    }
     state.db = BE.db;
     BE.auth.onAuthStateChanged(function(u){
       stopStreams();
@@ -261,9 +283,11 @@ function startFirebase(){
         state.notes = []; state.posts = []; state.announcements = [];
         state.notesLoaded = false; state.postsLoaded = false;
         setChat([]); setProfiles({});
+        streamHooks.forEach(function(h){ try{ if (h.off) h.off(); }catch(e){} });
         paintAuth();
         applyAdminMode();
         renderNotebook(); renderHelp(); renderAnnouncements();
+        renderWork(); renderDueSoon();
       }
     });
   }catch(e){
@@ -276,17 +300,21 @@ function startFirebase(){
 /* Admin is a real permission on Firebase: the owner email baked into the
    rules, plus anyone listed in config/admins. The rules enforce the same
    list server-side, so this only decides what the UI offers. */
+function isOwnerEmail(email){
+  var owners = (window.HUB_OWNERS || [window.HUB_OWNER]).map(function(e){ return String(e || "").toLowerCase(); });
+  return !!email && owners.indexOf(String(email).toLowerCase()) > -1;
+}
 function checkAdmin(){
   BE.isAdmin = false;
+  BE.isOwner = false;
   if (!BE.user) return Promise.resolve();
-  var owner = String(window.HUB_OWNER || "").toLowerCase();
-  if (owner && BE.user.email === owner) BE.isAdmin = true;
+  if (isOwnerEmail(BE.user.email)){ BE.isAdmin = true; BE.isOwner = true; }
   return BE.db.doc("config/admins").get().then(function(s){
     var list = (s.exists && s.data() && s.data().emails) || [];
     for (var i = 0; i < list.length; i++){
       if (String(list[i]).toLowerCase() === BE.user.email){ BE.isAdmin = true; break; }
     }
-  }).catch(function(){ /* unreadable is not fatal — stay non-admin */ });
+  }).catch(function(){ /* unreadable is not fatal. Stay non-admin */ });
 }
 
 function signIn(){
@@ -331,7 +359,7 @@ function paintAuth(){
     } else {
       who.hidden = true;
       btn.textContent = "Sign in";
-      btn.className = "auth-btn";
+      btn.className = "btn sm auth-btn";
       btn.onclick = openAuthSheet;
     }
   } else {
@@ -485,6 +513,13 @@ function startStreams(){
     }, function(){ setChat([]); }));
   }
 
+  streamHooks.forEach(function(h){
+    try{
+      var u = h.on(db);
+      (Array.isArray(u) ? u : [u]).forEach(function(f){ if (typeof f === "function") streams.push(f); });
+    }catch(e){}
+  });
+
   streams.push(db.collection("help").orderBy("createdAt","desc").limit(200).onSnapshot(function(qs){
       var items = [];
       qs.docs.forEach(function(d){
@@ -504,9 +539,9 @@ function renderAllFallback(){
   renderNotebook();
   renderHelp();
   document.getElementById("feedStatus").textContent = state.standalone
-    ? "The shared features aren't connected on this copy — the schedule and calendar still work."
+    ? "The shared features aren't connected on this copy. The schedule and calendar still work."
     : "Live announcements aren't available in this view.";
 }
 
 
-export { BE, FB_VERSION, ME, authorFields, canAdmin, checkAdmin, dbErrMsg, fmtAgo, fmtWhen, initDb, initFirebase, loadFirebaseSdk, meId, mergeField, mine, myName, paintAuth, renderAllFallback, requireDb, saveConfig, setMyName, showUnconfigured, signIn, signOutNow, signedIn, startFirebase, startStreams, stopStreams, streams, toast, toastTimer, usingFirebase };
+export { isOwnerEmail, registerStream, BE, FB_VERSION, ME, authorFields, canAdmin, checkAdmin, dbErrMsg, fmtAgo, fmtWhen, initDb, initFirebase, loadFirebaseSdk, meId, mergeField, mine, myName, paintAuth, renderAllFallback, requireDb, saveConfig, setMyName, showUnconfigured, signIn, signOutNow, signedIn, startFirebase, startStreams, stopStreams, streams, toast, toastTimer, usingFirebase };

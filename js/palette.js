@@ -7,10 +7,10 @@ import { openSiteEditor } from "./adminpanel.js";
 import { openAuthSheet } from "./auth.js";
 
 /* =========================================================
-   COMMAND PALETTE — one box that finds anything.
+   COMMAND PALETTE. One box that finds anything.
 
    Ctrl-K (or Cmd-K) anywhere. It searches across every part of the Hub at
-   once — assignments, notes, help posts, calendar dates, the timetable —
+   once. Assignments, notes, help posts, calendar dates, the timetable -
    rather than making you guess which tab a thing lives in first, and it
    doubles as the fastest way to run the handful of actions people repeat.
 
@@ -138,7 +138,7 @@ function index(){
       });
     });
     out.push({
-      kind:"Subject", title:legend[code] ? code + " — " + legend[code] : code,
+      kind:"Subject", title:legend[code] ? code + ", " + legend[code] : code,
       hint:when.slice(0, 4).join(", ") + (when.length > 4 ? " …" : ""),
       run:function(){ nav("schedule"); }
     });
