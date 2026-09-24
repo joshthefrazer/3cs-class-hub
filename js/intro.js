@@ -5,7 +5,7 @@ import { latest } from "./updates.js";
 
    1. What's new    the latest version, what was added and what was fixed
    2. Thank you     Joshua Malic in the spotlight for the concept, then
-                    Alejhandro Morales and Stoney Jones, and a plain note
+                    Alejandro Moralez and Stoney Jones, and a plain note
                     that the code was written by an AI
    3. Claude        the AI that wrote the code, at work
    4. Welcome       the Itz'at STEAM Academy logo draws itself, then 3CS
@@ -109,7 +109,7 @@ function buildScenes(box){
       '<h1 class="sb-name" id="introName">Joshua Malic</h1>' +
       '<p class="sb-note"><b>Heads-up:</b> Joshua came up with the ideas and guided every step. He didn\'t write the code. Claude, an AI, wrote every line.</p>' +
       '<div class="sb-cards">' +
-        '<div class="sb-card c1"><span class="sb-av">AM</span><div><b>Alejhandro Morales</b><small>Helped Joshua get more out of Claude</small></div></div>' +
+        '<div class="sb-card c1"><span class="sb-av">AM</span><div><b>Alejandro Moralez</b><small>Helped Joshua get more out of Claude</small></div></div>' +
         '<div class="sb-card c2"><span class="sb-av">SJ</span><div><b>Stoney Jones</b><small>Came up with a few of the ideas</small></div></div>' +
       '</div>' +
     '</div>';

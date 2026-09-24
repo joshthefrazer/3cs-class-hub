@@ -10,6 +10,7 @@ import { openModeration } from "./chat.js";
 import { openSiteEditor } from "./adminpanel.js";
 import { openLauncher } from "./links.js";
 import { setBackgroundMode, bgMode, openGallery } from "./campus.js";
+import { lookHtml, wireLook } from "./layout.js";
 
 /* =========================================================
    SETTINGS - everything here is a preference for this browser, except
@@ -57,6 +58,7 @@ function openSettings(){
         seg("setBg", bgMode(), [["sections","By section"],["daily","Daily"],["paper","Graph paper"]])) +
       '<div class="btn-row" style="margin-top:6px"><button class="btn ghost sm" id="setPhotos" type="button">' + svgIcon("i-image") + ' See the campus photos</button></div>' +
     '</section>' +
+    lookHtml() +
 
     '<section class="set-sec"><h3>Welcome animation</h3>' +
       row("Play it", "It's about half a minute, and you can always skip it.",
@@ -134,6 +136,7 @@ function openSettings(){
     });
   });
   box.querySelector("#setPhotos").addEventListener("click", function(){ closeSheet(); openGallery(0); });
+  wireLook(box, closeSheet);
   var intro = box.querySelector("#setIntro");
   intro.value = getPref("3cs_intro_mode");
   intro.addEventListener("change", function(){
@@ -175,11 +178,12 @@ function openMoreSheet(){
     ["help", "i-help", "Help board", "Ask the class, post reminders"],
     ["calendar", "i-calendar", "Calendar", "Cycle days, holidays, half days"],
     ["announcements", "i-megaphone", "News", "Announcements from admins"],
-    ["people", "i-people", "People", "Everyone's school email"]
+    ["people", "i-people", "People", "Everyone's school email"],
+    ["voice", "i-poll", "Polls & feedback", "Vote, share ideas, report problems"]
   ];
   var box = openSheet(
     '<div class="sheet-head"><h2>More</h2><button class="sheet-close" type="button" aria-label="Close">' + svgIcon("i-close") + '</button></div>' +
-    '<div class="more-list">' + items.map(function(it){
+    '<div class="more-list">' + items.filter(function(it){ var b = document.querySelector('nav.tabs button[data-tab="' + it[0] + '"]'); return !b || !b.hidden; }).map(function(it){
       return '<button type="button" class="more-item" data-tab="' + it[0] + '"><span class="si">' + svgIcon(it[1]) + '</span><span><b>' + it[2] + '</b><small>' + it[3] + '</small></span></button>';
     }).join("") +
     '<button type="button" class="more-item" data-do="search"><span class="si">' + svgIcon("i-search") + '</span><span><b>Search</b><small>Find anything in the Hub</small></span></button>' +

@@ -18,6 +18,8 @@ import { initChat } from "./chat.js";
 import { initPeople } from "./people.js";
 import { initSettings } from "./settings.js";
 import { initCampus } from "./campus.js";
+import { initVoice, pollsToAnswer } from "./voice.js";
+import { initLayout } from "./layout.js";
 
 /* =========================================================
    TODAY + NAVIGATION
@@ -27,7 +29,7 @@ import { initCampus } from "./campus.js";
    The day is drawn as a ruler, one block per session, with a marker that
    moves along it in real time.
    ========================================================= */
-var TABS = ["schedule", "work", "notebook", "help", "calendar", "announcements", "people"];
+var TABS = ["schedule", "work", "notebook", "help", "calendar", "announcements", "people", "voice"];
 
 var REDUCED = false;
 try{
@@ -69,9 +71,6 @@ function setHeroWord(text, num){
     n.className = "num";
     n.setAttribute("aria-hidden", "true");
     letters(num, n);
-    n.insertAdjacentHTML("beforeend",
-      '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">' +
-      '<path pathLength="1" d="M58 7C30 5 8 22 8 50c0 27 20 44 44 44 26 0 42-19 42-44C94 26 76 9 50 9c-9 0-17 3-23 8"/></svg>');
     el.appendChild(n);
   }
 }
@@ -252,6 +251,10 @@ function renderNowStrip(){
       w.overdue && w.today ? w.today + " more due today" : "Open Work to tick them off",
       w.overdue ? "bad" : w.today ? "hot" : "", function(){ warpTo("work"); }));
   }
+  var waiting = pollsToAnswer();
+  if (waiting.length) strip.appendChild(stat("i-poll",
+    waiting.length === 1 ? "A poll for you" : waiting.length + " polls for you",
+    waiting.length === 1 ? waiting[0].question : "Your vote counts", "hot", function(){ warpTo("voice"); }));
   var hd = nextHalfDay();
   if (hd) strip.appendChild(stat("i-clock",
     hd.days === 1 ? "Half day tomorrow" : "Half day in " + hd.days + " days",
@@ -581,6 +584,10 @@ function boot(){
   initPeople();
   initSettings();
   initCampus();
+  initVoice();
+  initLayout();
+  window.__updateTabInk = updateTabInk;
+  window.addEventListener("3cs:polls", function(){ if (state.tab === "schedule") renderNowStrip(); });
   onProfiles(renderHelp);
   renderBell();
   renderScheduleTable(todayInfo().dayNum);

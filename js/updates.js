@@ -9,6 +9,24 @@
 
 var RELEASES = [
   {
+    version: "3.1",
+    date: "September 2026",
+    title: "Make it yours",
+    added: [
+      "Polls: admins ask the class, everyone votes, and the results fill in live",
+      "Feedback: share ideas, report what's broken, and upvote what you want most",
+      "Customize Today: move, collapse or hide any card, and bring it back any time",
+      "Pick an accent colour, text size, spacing and glass cards in Settings",
+      "Hide sections you don't use from the menu",
+      "A \"right now\" pill docks on every page, so your class and countdown are always there",
+      "Your look follows you to any device you sign in on"
+    ],
+    fixed: [
+      "The day number sits in a clean badge instead of a hand-drawn circle",
+      "Alejandro Moralez's name is spelled right in the credits"
+    ]
+  },
+  {
     version: "3.0",
     date: "September 2026",
     title: "The big redesign",

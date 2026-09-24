@@ -39,7 +39,8 @@ var BY_SECTION = {
   help: "stairs",
   calendar: "entrance",
   announcements: "wings",
-  people: "pergola"
+  people: "pergola",
+  voice: "studio"
 };
 var OUTSIDE = ["front", "courtyard", "wings", "stairs", "pergola", "entrance"];
 var CREDIT = "Photo: Ministry of Education, Culture, Science and Technology, Belize";

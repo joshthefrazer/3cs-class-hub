@@ -2,7 +2,7 @@
 
 The class website for **3CS at Itz'at STEAM Academy**, 2026-2027: today's classes, what's due, class notes, the help board, the calendar, everyone's school email, and a class chat with private and group messages.
 
-Concept by Joshua Malic, with help from Alejhandro Morales and Stoney Jones. The code was written by Claude, an AI.
+Concept by Joshua Malic, with help from Alejandro Moralez and Stoney Jones. The code was written by Claude, an AI.
 
 Live at https://joshthefrazer.github.io/3cs-class-hub/
 
@@ -19,7 +19,9 @@ Live at https://joshthefrazer.github.io/3cs-class-hub/
 - **People**: everyone who has signed in, with their school email. Pick people to email them together in Gmail, copy addresses, or start a chat. Anyone can hide their email in Settings.
 - **Messages**: the 3CS class room, private chats and group chats. Emoji, 22 animated stickers made for the Hub, a class GIF library, pictures, reactions, replies, @mentions, editing, muting, hiding and pinning, and pop-up notifications at the side.
 - **Campus background**: real photos of the Itz'at campus behind every page, a different spot for each section (or one a day, or plain graph paper, in Settings). Photos by the Ministry of Education, Culture, Science and Technology, Belize, from their [opening-day album](https://www.flickr.com/photos/193643118@N04/albums/72177720317011818). They live in `assets/campus`; the list is in `js/campus.js`.
-- **Settings**: theme, motion, background, the welcome animation, notifications, email privacy.
+- **Polls & feedback**: admins run polls (results can't be faked; the rules check every vote), and anyone can post ideas, report problems or ask for changes, with upvotes. Anonymous posts hide the name from classmates but not from admins.
+- **Make it yours**: move, collapse or hide any card on Today, hide sections from the menu, dock a "right now" pill on every page, and pick an accent colour, text size, spacing and glass cards. Saved to your account.
+- **Settings**: theme, motion, background, look and layout, the welcome animation, notifications, email privacy.
 - **Welcome animation**: what's new, the credits, and the welcome. It plays on the first visit each day by default.
 
 ## How it's built

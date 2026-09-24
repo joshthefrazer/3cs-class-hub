@@ -16,6 +16,7 @@ import { syncClassroom, classroomLabel } from "./classroom.js";
 import { renderPeople } from "./people.js";
 import { openChat } from "./chat.js";
 import { openMoreSheet, openSettings, openWhatsNew } from "./settings.js";
+import { renderVoice, renderFeedback } from "./voice.js";
 
 /* =========================================================
    7. Admin mode + tabs + wiring
@@ -30,6 +31,8 @@ function applyAdminMode(){
     renderNotebookIntro();
     renderNotebook();
     renderHelp();
+    renderVoice();
+    renderFeedback();
     renderLegend();
     paintTrustNotes();
     return;

@@ -21,7 +21,7 @@
   /* Runs before first paint: picks the theme so there is no flash of the
      wrong one, applies the motion setting, and decides whether the welcome
      animation plays. Keep HUB_VERSION in step with js/updates.js. */
-  window.HUB_VERSION = "3.0";
+  window.HUB_VERSION = "3.1";
   (function(){
     var d = document.documentElement;
     function get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
@@ -29,6 +29,11 @@
     if (t === "dark" || t === "light") d.setAttribute("data-theme", t);
     if (get("3cs_motion") === "reduce") d.classList.add("reduce-motion");
     if (get("3cs_bg") !== "paper") d.classList.add("campus-on");
+    /* your look (Settings > Look): accent colour, text size, density, glass */
+    try{
+      var look = JSON.parse(get("3cs_look") || "{}");
+      ["accent", "text", "density", "glass", "chat"].forEach(function(k){ if (look[k]) d.setAttribute("data-" + k, look[k]); });
+    }catch(e){}
     if ("startViewTransition" in document) d.classList.add("vt");
     setTimeout(function(){ d.classList.add("booted"); }, 5000);
     try{
@@ -77,6 +82,7 @@
 <link rel="modulepreload" href="js/fx.js">
 <link rel="modulepreload" href="js/help.js">
 <link rel="modulepreload" href="js/intro.js">
+<link rel="modulepreload" href="js/layout.js">
 <link rel="modulepreload" href="js/links.js">
 <link rel="modulepreload" href="js/live.js">
 <link rel="modulepreload" href="js/media.js">
@@ -91,6 +97,7 @@
 <link rel="modulepreload" href="js/text.js">
 <link rel="modulepreload" href="js/theme.js">
 <link rel="modulepreload" href="js/updates.js">
+<link rel="modulepreload" href="js/voice.js">
 <link rel="modulepreload" href="js/work.js">
 </head>
 <body data-world="schedule">
@@ -250,6 +257,9 @@
     <symbol id="q-present" viewBox="0 0 24 24"><rect x="3.6" y="4.4" width="16.8" height="11.6" rx="1.8"/><path d="M12 16v4M8.6 20h6.8"/><path d="M8 12.4l2.6-2.8 2.2 2 3.2-3.6"/></symbol>
     <symbol id="q-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M3.8 12h16.4M12 3.6c2.4 2.4 3.4 5.2 3.4 8.4s-1 6-3.4 8.4c-2.4-2.4-3.4-5.2-3.4-8.4s1-6 3.4-8.4z"/></symbol>
   
+<symbol id="i-poll" viewBox="0 0 24 24"><path d="M4 20h16M7 16.5V11M12 16.5V6.5M17 16.5V9"/></symbol>
+<symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.3 1.1 2.2h5c0-.9.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/></symbol>
+<symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
     <!-- added for the 2026 overhaul: same 24px grid, same stroke -->
     <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.2 13.4a7.4 7.4 0 0 0 0-2.8l2-1.5-2-3.4-2.3 1a7.3 7.3 0 0 0-2.4-1.4L14.2 3h-4l-.4 2.3a7.3 7.3 0 0 0-2.4 1.4l-2.3-1-2 3.4 2 1.5a7.4 7.4 0 0 0 0 2.8l-2 1.5 2 3.4 2.3-1a7.3 7.3 0 0 0 2.4 1.4l.4 2.3h4l.3-2.3a7.3 7.3 0 0 0 2.4-1.4l2.3 1 2-3.4z"/></symbol>
     <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="8.6" r="3.3"/><path d="M3.2 19.4a5.8 5.8 0 0 1 11.6 0"/><path d="M15.4 5.6a3.2 3.2 0 0 1 0 6.1M17.6 14.3a5.6 5.6 0 0 1 3.2 5.1"/></symbol>
@@ -309,6 +319,7 @@
       <button type="button" data-tab="calendar"><svg class="ic" aria-hidden="true"><use href="#i-calendar"></use></svg><span class="lbl">Calendar</span></button>
       <button type="button" data-tab="announcements"><svg class="ic" aria-hidden="true"><use href="#i-megaphone"></use></svg><span class="lbl">News</span></button>
       <button type="button" data-tab="people"><svg class="ic" aria-hidden="true"><use href="#i-people"></use></svg><span class="lbl">People</span></button>
+      <button type="button" data-tab="voice"><svg class="ic" aria-hidden="true"><use href="#i-poll"></use></svg><span class="lbl">Feedback</span><span class="tab-count" id="tabCountVoice" hidden></span></button>
     </nav>
 
     <div class="hdr-right">
@@ -346,15 +357,15 @@
   <section class="panel active" id="tab-schedule" aria-labelledby="heroWord">
     <div class="today-hero" id="hero">
       <div class="th-main">
-        <div class="th-date"><span id="heroEyebrow">&nbsp;</span><span class="th-flag" id="modeFlag" hidden></span></div>
+        <div class="th-date"><span id="heroEyebrow">&nbsp;</span><span class="th-flag" id="modeFlag" hidden></span><button class="linkbtn th-custom" id="customizeBtn" type="button"><svg class="ic sm" aria-hidden="true"><use href="#i-grid"></use></svg> Customize</button></div>
         <h1 class="th-day" id="heroWord">Today</h1>
         <p class="th-sub" id="heroSub"></p>
         <div class="th-stats" id="nowStrip"></div>
       </div>
-      <div class="now-card" id="nowCard" aria-live="polite"></div>
+      <div class="now-card" id="nowCard" data-block="now" aria-live="polite"></div>
     </div>
 
-    <div class="card timeline-card" id="lineupCard">
+    <div class="card timeline-card" id="lineupCard" data-block="timeline">
       <div class="card-head">
         <div>
           <h2 id="lineupTitle">Today's timeline</h2>
@@ -365,8 +376,8 @@
       <div class="ruler" id="lineup"></div>
     </div>
 
-    <div class="bento">
-      <div class="card due-card" id="dueCard">
+    <div class="bento" data-block="row">
+      <div class="card due-card" id="dueCard" data-block="due">
         <div class="card-head">
           <div><h2 id="dueTitle">What's due</h2></div>
           <button class="linkbtn" id="dueAllBtn" type="button">All work <svg class="ic sm" aria-hidden="true"><use href="#i-chev-r"></use></svg></button>
@@ -374,7 +385,7 @@
         <div class="due-list" id="dueSoon"></div>
       </div>
 
-      <div class="card peek-card" id="chatPeek">
+      <div class="card peek-card" id="chatPeek" data-block="chat">
         <div class="card-head">
           <div><h2>Class chat</h2><p class="hint" id="peekSub">What 3CS is talking about</p></div>
           <button class="linkbtn" id="peekOpen" type="button">Open <svg class="ic sm" aria-hidden="true"><use href="#i-chev-r"></use></svg></button>
@@ -386,7 +397,7 @@
         </form>
       </div>
 
-      <div class="card quick-card" id="quickCard">
+      <div class="card quick-card" id="quickCard" data-block="apps">
         <div class="card-head">
           <div><h2>Apps</h2></div>
           <button class="linkbtn" id="quickEditBtn" type="button">Edit</button>
@@ -395,7 +406,7 @@
       </div>
     </div>
 
-    <div class="card next-card" id="nextDayCard" hidden>
+    <div class="card next-card" id="nextDayCard" data-block="next" hidden>
       <div class="nd-head">
         <div>
           <span class="hand nd-kicker">pack your bag for</span>
@@ -407,7 +418,7 @@
     </div>
 
     <div class="ref-grid">
-      <div class="card ref-table">
+      <div class="card ref-table" data-block="timetable">
         <div class="card-head">
           <div>
             <h2>Weekly timetable</h2>
@@ -420,12 +431,12 @@
         <p class="hint" id="rotationNote" style="margin:10px 0 0"></p>
       </div>
 
-      <div class="card">
+      <div class="card" data-block="bells">
         <div class="card-head"><div><h2>Bell times</h2></div></div>
         <div class="bells" id="bellSchedules"></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-block="codes">
         <div class="card-head">
           <div>
             <h2>Subject codes</h2>
@@ -633,6 +644,39 @@
     <p class="trust"><svg class="ic sm" aria-hidden="true"><use href="#i-shield"></use></svg><span>Only people signed in to the Hub can see this list. You can hide your email any time in Settings.</span></p>
   </section>
 
+  <!-- ============================ POLLS & FEEDBACK ============================ -->
+  <section class="panel" id="tab-voice" aria-labelledby="voiceHead">
+    <header class="page-head">
+      <div>
+        <h1 id="voiceHead">Polls &amp; feedback</h1>
+        <p class="page-sub">Vote on what happens next, and tell the admins what to add, fix or change in the Hub.</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn admin-only" id="pollNewBtn" type="button" hidden><svg class="ic" aria-hidden="true"><use href="#i-poll"></use></svg> New poll</button>
+        <button class="btn ghost" id="fbNewBtn" type="button"><svg class="ic" aria-hidden="true"><use href="#i-bulb"></use></svg> Share feedback</button>
+      </div>
+    </header>
+
+    <div class="voice-head">
+      <h2>Polls</h2>
+      <span class="hint" id="pollHint"></span>
+    </div>
+    <div class="poll-grid" id="pollList"></div>
+    <div class="empty-state" id="pollEmpty" hidden></div>
+
+    <div class="voice-head fb-head">
+      <h2>Ideas, flaws and changes</h2>
+      <div class="seg sm" role="radiogroup" aria-label="Sort feedback">
+        <label><input type="radio" name="fbSort" value="top" checked><span>Top</span></label>
+        <label><input type="radio" name="fbSort" value="new"><span>Newest</span></label>
+      </div>
+    </div>
+    <div class="chip-row" id="fbChips"></div>
+    <div class="fb-list" id="fbList"></div>
+    <div class="empty-state" id="fbEmpty" hidden></div>
+    <p class="trust"><svg class="ic sm" aria-hidden="true"><use href="#i-shield"></use></svg><span>Everyone signed in can post and upvote. Anonymous posts hide your name from classmates, but admins can still see who posted, so keep it kind and useful. Your poll answers are private; only admins can see who picked what.</span></p>
+  </section>
+
 </main>
 
 <footer class="site-foot">
@@ -640,7 +684,7 @@
     <img src="assets/itzat-glyph.svg" alt="" width="28" height="28">
     <div>
       <b>3CS Class Hub</b>
-      <span>Itz'at STEAM Academy, 2026-2027. Concept by Joshua Malic, with help from Alejhandro Morales and Stoney Jones. Code written by Claude, an AI.</span>
+      <span>Itz'at STEAM Academy, 2026-2027. Concept by Joshua Malic, with help from Alejandro Moralez and Stoney Jones. Code written by Claude, an AI.</span>
       <span class="foot-photo">Background: <button type="button" class="linkbtn plain" id="bgName">our campus</button>. Campus photos by the <a href="https://www.flickr.com/photos/193643118@N04/albums/72177720317011818" target="_blank" rel="noopener">Ministry of Education, Culture, Science and Technology, Belize</a>.</span>
     </div>
   </div>

@@ -458,6 +458,168 @@ service cloud.firestore {
       allow delete: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
     }
 
+    // ---- polls -------------------------------------------------------------
+    // Admins ask; everyone signed in answers. Each person's answer is one
+    // document under the poll, named by their uid, and the running totals on
+    // the poll may only move exactly as that one answer moved, so nobody can
+    // stuff the count. Answers are private: only you and admins can read yours.
+
+    function voteRef(pid) {
+      return /databases/$(database)/documents/polls/$(pid)/votes/$(request.auth.uid);
+    }
+    function pollRef(pid) {
+      return /databases/$(database)/documents/polls/$(pid);
+    }
+    function votedBefore(pid) {
+      return exists(voteRef(pid));
+    }
+    function choicesBefore(pid) {
+      return votedBefore(pid) ? get(voteRef(pid)).data.choices : [];
+    }
+    function choicesAfter(pid) {
+      return existsAfter(voteRef(pid)) ? getAfter(voteRef(pid)).data.choices : [];
+    }
+    function moved(pid, k) {
+      return request.resource.data.counts.get(k, 0) - resource.data.counts.get(k, 0)
+          == (k in choicesAfter(pid) ? 1 : 0) - (k in choicesBefore(pid) ? 1 : 0);
+    }
+    function pollOpen(p) {
+      return p.closed == false && (p.get('closesAt', null) == null || request.time < p.closesAt);
+    }
+    function tallyOk(pid) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['counts', 'voters'])
+          && pollOpen(resource.data)
+          && existsAfter(voteRef(pid))
+          && request.resource.data.counts is map
+          && request.resource.data.counts.keys().hasOnly(resource.data.optionIds)
+          && request.resource.data.voters == resource.data.voters + (votedBefore(pid) ? 0 : 1)
+          && moved(pid, 'o0') && moved(pid, 'o1') && moved(pid, 'o2') && moved(pid, 'o3')
+          && moved(pid, 'o4') && moved(pid, 'o5') && moved(pid, 'o6') && moved(pid, 'o7');
+    }
+    function pollOk(d) {
+      return d.keys().hasOnly(['question', 'options', 'optionIds', 'multi', 'closed', 'closesAt', 'note', 'counts', 'voters', 'authorUid', 'authorName', 'createdAt'])
+          && d.question is string && d.question.size() > 0 && d.question.size() <= 200
+          && d.options is list && d.options.size() >= 2 && d.options.size() <= 8
+          && d.optionIds is list && d.optionIds.size() == d.options.size()
+          && ['o0', 'o1', 'o2', 'o3', 'o4', 'o5', 'o6', 'o7'].hasAll(d.optionIds)
+          && d.multi is bool && d.closed is bool
+          && (d.get('closesAt', null) == null || d.closesAt is timestamp)
+          && d.get('note', '') is string && d.get('note', '').size() <= 500
+          && d.authorName is string && d.authorName.size() <= 40;
+    }
+
+    match /polls/{pid} {
+      allow read: if mayUseHub();
+      allow create: if isAdmin()
+                    && pollOk(request.resource.data)
+                    && request.resource.data.authorUid == request.auth.uid
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.voters == 0
+                    && request.resource.data.counts == {};
+      allow update: if (isAdmin() && pollOk(request.resource.data)
+                        && request.resource.data.authorUid == resource.data.authorUid
+                        && request.resource.data.createdAt == resource.data.createdAt)
+                    || (mayUseHub() && tallyOk(pid));
+      allow delete: if isAdmin();
+
+      match /votes/{uid} {
+        allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+        allow create, update: if mayUseHub()
+                      && request.auth.uid == uid
+                      && pollOpen(get(pollRef(pid)).data)
+                      && request.resource.data.keys().hasOnly(['choices', 'at'])
+                      && request.resource.data.at == request.time
+                      && request.resource.data.choices is list
+                      && request.resource.data.choices.size() >= 1
+                      && request.resource.data.choices.size() <= (get(pollRef(pid)).data.multi ? get(pollRef(pid)).data.options.size() : 1)
+                      && request.resource.data.choices.toSet().size() == request.resource.data.choices.size()
+                      && get(pollRef(pid)).data.optionIds.hasAll(request.resource.data.choices)
+                      // the totals have to move in the same write
+                      && (getAfter(pollRef(pid)).data.counts != get(pollRef(pid)).data.counts
+                          || (resource != null && request.resource.data.choices.toSet() == resource.data.choices.toSet()));
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ---- feedback ----------------------------------------------------------
+    // Ideas, things that are broken, and changes people want. Anyone signed in
+    // can post and upvote (one vote each, and the count has to match). A post
+    // can be anonymous to classmates: then the name and uid are left off it
+    // and kept in feedbackAuthors, which only admins can read, so nothing
+    // posted here is ever truly untraceable.
+
+    function fbAuthorRef(fid) {
+      return /databases/$(database)/documents/feedbackAuthors/$(fid);
+    }
+    function fbMine(fid) {
+      return resource.data.authorUid == request.auth.uid
+          || (resource.data.anon == true
+              && exists(fbAuthorRef(fid))
+              && get(fbAuthorRef(fid)).data.uid == request.auth.uid);
+    }
+    function fbTextOk(d) {
+      return d.kind in ['idea', 'flaw', 'change']
+          && d.title is string && d.title.size() > 0 && d.title.size() <= 120
+          && d.body is string && d.body.size() <= 2000;
+    }
+
+    match /feedback/{fid} {
+      allow read: if mayUseHub();
+
+      allow create: if mayUseHub()
+                    && request.resource.data.keys().hasOnly(['kind', 'title', 'body', 'anon', 'authorUid', 'authorName', 'createdAt', 'status', 'votes', 'voteCount'])
+                    && fbTextOk(request.resource.data)
+                    && request.resource.data.anon is bool
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.status == 'new'
+                    && request.resource.data.votes == {}
+                    && request.resource.data.voteCount == 0
+                    && (
+                      (request.resource.data.anon == false
+                        && request.resource.data.authorUid == request.auth.uid
+                        && request.resource.data.authorName is string
+                        && request.resource.data.authorName.size() > 0
+                        && request.resource.data.authorName.size() <= 40)
+                      ||
+                      (request.resource.data.anon == true
+                        && request.resource.data.authorUid == ''
+                        && request.resource.data.authorName == ''
+                        && existsAfter(fbAuthorRef(fid))
+                        && getAfter(fbAuthorRef(fid)).data.uid == request.auth.uid)
+                    );
+
+      allow update: if (isAdmin()
+                        && request.resource.data.status in ['new', 'planned', 'doing', 'done', 'no']
+                        && request.resource.data.get('adminNote', '') is string
+                        && request.resource.data.get('adminNote', '').size() <= 500)
+                    // the author can fix the wording
+                    || (mayUseHub() && fbMine(fid)
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kind', 'title', 'body'])
+                        && fbTextOk(request.resource.data))
+                    // anyone can add or take back their own upvote
+                    || (mayUseHub()
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes', 'voteCount'])
+                        && request.resource.data.votes is map
+                        && request.resource.data.votes.diff(resource.data.votes).affectedKeys().hasOnly([request.auth.uid])
+                        && (!(request.auth.uid in request.resource.data.votes) || request.resource.data.votes[request.auth.uid] == true)
+                        && request.resource.data.voteCount == resource.data.voteCount
+                             + (request.auth.uid in request.resource.data.votes ? 1 : 0)
+                             - (request.auth.uid in resource.data.votes ? 1 : 0));
+
+      allow delete: if isAdmin() || (signedIn() && fbMine(fid));
+    }
+
+    match /feedbackAuthors/{fid} {
+      allow get: if signedIn() && (isAdmin() || resource.data.uid == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if signedIn()
+                    && request.resource.data.keys().hasOnly(['uid'])
+                    && request.resource.data.uid == request.auth.uid
+                    && !exists(/databases/$(database)/documents/feedback/$(fid));
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
     // ---- help board ------------------------------------------------------
 
     match /help/{postId} {
