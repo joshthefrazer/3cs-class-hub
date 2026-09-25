@@ -499,6 +499,8 @@ table.sched td{
   overflow: hidden;
 }
 table.sched td:not(.daycol)::before{ content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--sc, var(--brand)); opacity: .8; }
+table.sched td.empty{ background: transparent; border: 1px dashed var(--line); }
+table.sched td.empty::before{ display: none; }
 table.sched td.daycol{
   vertical-align: middle;
   background: transparent;

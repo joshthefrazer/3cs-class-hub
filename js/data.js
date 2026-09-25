@@ -310,15 +310,15 @@ var SESSIONS = [
 /* The 3CS timetable, 2026-2027 (the "Class 3CS - Simplified Timetable",
    updated September 2026). Teachers' initials carry over from the first
    timetable where the subject and room match; admins can correct any cell
-   live from the site editor. Day 7 is a half day: four sessions, then PLC. */
+   live from the site editor. Day 7 is a half day: four sessions, then PLC for teachers. */
 var SCHED = {
   1:[{c:"QR",r:"D2",t:"JM"},{c:"FA",r:"FAS",t:"KS"},{c:"LA",r:"D1",t:"KG"},{c:"S&T",r:"D4",t:"BM"},{c:"Span",r:"N5",t:"JB"},{c:"BS",r:"N3",t:"DD"}],
   2:[{c:"QR",r:"D2",t:"JM"},{c:"DA&M",r:"DAS",t:"CST/CC"},{c:"FA",r:"FAS",t:"KS"},{c:"LA",r:"D1",t:"KG"},{c:"S&T",r:"D4",t:"BM"},{c:"M",r:"MS",t:"AK"}],
   3:[{c:"FA",r:"FAS",t:"KS"},{c:"LA",r:"D1",t:"KG"},{c:"M",r:"MS",t:"AK"},{c:"M",r:"MS",t:"AK"},{c:"QR",r:"D2",t:"JM"},{c:"FL&E",r:"N2",t:"LL"}],
   4:[{c:"S&T",r:"D4",t:"BM"},{c:"M",r:"MS",t:"AK"},{c:"DA&M",r:"DAS",t:"CST/CC"},{c:"LS",r:"N3",t:"DD"},{c:"LA",r:"D1",t:"KG"},{c:"QR",r:"D2",t:"JM"}],
-  5:[{c:"QR",r:"D2",t:"JM"},{c:"DA&M",r:"DAS",t:"CST/CC"},{c:"Span",r:"N5",t:"JB"},{c:"PE",r:"-",t:"CW"},{c:"CP",r:"N4",t:"KC"},{c:"CP",r:"N4",t:"KC"}],
+  5:[{c:"QR",r:"D2",t:"JM"},{c:"DA&M",r:"DAS",t:"CST/CC"},{c:"Span",r:"N5",t:"JB"},{c:"PE",r:"D3",t:"CW"},{c:"CP",r:"N4",t:"KC"},{c:"CP",r:"N4",t:"KC"}],
   6:[{c:"LA",r:"D1",t:"KG"},{c:"DA&M",r:"DAS",t:"CST/CC"},{c:"DA&M",r:"DAS",t:"CST/CC"},{c:"S&T",r:"D4",t:"BM"},{c:"PE",r:"D3",t:"CW"},{c:"Assembly",r:"Maker Space",t:""}],
-  7:[{c:"DA&M",r:"DAS",t:"CST/CC"},{c:"BS",r:"N3",t:"DD"},{c:"LA",r:"D1",t:"KG"},{c:"QR",r:"D2",t:"JM"},{c:"PLC",r:"-",t:"Staff"},{c:"PLC",r:"-",t:"Staff"}]
+  7:[{c:"DA&M",r:"DAS",t:"CST/CC"},{c:"BS",r:"N3",t:"DD"},{c:"LA",r:"D1",t:"KG"},{c:"QR",r:"D2",t:"JM"},{c:"",r:"",t:""},{c:"",r:"",t:""}]
 };
 
 var DEFAULT_LEGEND = {

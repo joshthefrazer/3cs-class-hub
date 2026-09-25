@@ -55,6 +55,7 @@ function renderScheduleTable(highlightDay){
     html += '<tr' + (day === highlightDay ? ' class="today"' : "") + '><td class="daycol"><span>Day ' + day + "</span></td>";
     liveSched()[day].forEach(function(s, i){
       var tip = [subjectName(s.c) || s.c, s.r && s.r !== "-" ? "Room " + s.r : "", s.t].filter(Boolean).join(" · ");
+      if (!s.c){ html += '<td class="empty" data-i="' + i + '"></td>'; return; }
       html += '<td data-i="' + i + '" title="' + esc(tip) + '" style="--sc:' + subjectColor(s.c) + '"><div class="code">' + esc(s.c) +
               '</div><div class="rt">' + esc([s.r, s.t].filter(function(x){ return x && x !== "\u2014" && x !== "-"; }).join(" · ")) + "</div></td>";
     });
