@@ -4,6 +4,7 @@ import { avatarEl, displayName, onProfiles } from "./profile.js";
 import { openAuthSheet } from "./auth.js";
 import { registerCommands } from "./palette.js";
 import { notify } from "./notify.js";
+import { canModerate } from "./roles.js";
 
 /* =========================================================
    POLLS & FEEDBACK - the class's say in how things go.
@@ -398,6 +399,7 @@ function fbCard(f){
       (f.adminNote ? '<div class="fb-note">' + svgIcon("i-shield", "sm") + '<span></span></div>' : "") +
       '<div class="fb-meta"><span class="fb-who"></span><span>' + ago(f.createdAt) + "</span>" +
         (mine && !admin ? '<button class="linkbtn fb-edit" type="button">Edit</button><button class="linkbtn danger fb-del" type="button">Delete</button>' : "") +
+        (!mine && !admin && canModerate() ? '<button class="linkbtn danger fb-del" type="button">Remove</button>' : "") +
         (admin ? '<select class="fb-status" aria-label="Status">' + Object.keys(STATUS).map(function(s){ return '<option value="' + s + '"' + ((f.status || "new") === s ? " selected" : "") + ">" + STATUS[s] + "</option>"; }).join("") + "</select>" +
           '<button class="linkbtn fb-reply" type="button">' + (f.adminNote ? "Edit reply" : "Reply as admin") + "</button>" +
           (f.anon ? '<button class="linkbtn fb-who-btn" type="button">Who posted this?</button>' : "") +

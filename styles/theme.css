@@ -433,3 +433,67 @@ html.campus-on[data-glass="on"] .stat{
   html[data-chat="left"] .chat-fab{ right: auto; left: 24px; }
   html[data-chat="left"] .messenger{ right: auto; left: 24px; }
 }
+
+:root[data-accent="gold"]{ --brand: #9A6F00; --brand-hover: #7F5B00; --brand-ink: #8A6400; --brand-soft: #FBF1D6; --brand-line: #EEDB9E; }
+:root[data-accent="gold"][data-theme="dark"]{ --brand: #E6B93A; --brand-hover: #EEC95E; --brand-ink: #F2D57E; --brand-soft: #33290F; --brand-line: #56451A; }
+:root[data-accent="teal"]{ --brand: #0E7C7B; --brand-hover: #0B6564; --brand-ink: #0D7170; --brand-soft: #DDF3F2; --brand-line: #B2E2E0; }
+:root[data-accent="teal"][data-theme="dark"]{ --brand: #4CC3BF; --brand-hover: #6BD0CD; --brand-ink: #8ADBD8; --brand-soft: #12302F; --brand-line: #1E4E4C; }
+:root[data-accent="slate"]{ --brand: #3F4A5C; --brand-hover: #323B4A; --brand-ink: #384253; --brand-soft: #E8EBF0; --brand-line: #C9CFDA; }
+:root[data-accent="slate"][data-theme="dark"]{ --brand: #A3B0C4; --brand-hover: #B6C1D2; --brand-ink: #C7D0DE; --brand-soft: #232A36; --brand-line: #3A4557; }
+@media (prefers-color-scheme: dark){
+  :root[data-accent="gold"]:not([data-theme="light"]){ --brand: #E6B93A; --brand-hover: #EEC95E; --brand-ink: #F2D57E; --brand-soft: #33290F; --brand-line: #56451A; }
+  :root[data-accent="teal"]:not([data-theme="light"]){ --brand: #4CC3BF; --brand-hover: #6BD0CD; --brand-ink: #8ADBD8; --brand-soft: #12302F; --brand-line: #1E4E4C; }
+  :root[data-accent="slate"]:not([data-theme="light"]){ --brand: #A3B0C4; --brand-hover: #B6C1D2; --brand-ink: #C7D0DE; --brand-soft: #232A36; --brand-line: #3A4557; }
+}
+
+/* ------------------------------------------------ painted backgrounds --
+   Soft gradient washes for people who'd rather not have a photo. */
+html[data-bg="plain"] body{ background-image: none; }
+html[data-bg="aurora"] .campus-bg,
+html[data-bg="sunset"] .campus-bg,
+html[data-bg="ocean"] .campus-bg,
+html[data-bg="forest"] .campus-bg,
+html[data-bg="midnight"] .campus-bg{ background-color: var(--bg); }
+html[data-bg="aurora"] .campus-bg{ background-image:
+  radial-gradient(60% 55% at 12% 18%, rgba(139, 92, 246, .42), transparent 70%),
+  radial-gradient(50% 45% at 88% 12%, rgba(232, 100, 28, .3), transparent 70%),
+  radial-gradient(55% 55% at 72% 88%, rgba(36, 86, 214, .32), transparent 70%),
+  radial-gradient(45% 40% at 18% 90%, rgba(22, 160, 106, .22), transparent 70%); }
+html[data-bg="sunset"] .campus-bg{ background-image:
+  radial-gradient(65% 55% at 85% 10%, rgba(255, 140, 66, .45), transparent 70%),
+  radial-gradient(55% 50% at 10% 30%, rgba(236, 72, 153, .3), transparent 70%),
+  radial-gradient(60% 60% at 60% 95%, rgba(124, 58, 237, .3), transparent 70%); }
+html[data-bg="ocean"] .campus-bg{ background-image:
+  radial-gradient(60% 55% at 15% 12%, rgba(14, 165, 233, .38), transparent 70%),
+  radial-gradient(55% 55% at 90% 40%, rgba(20, 184, 166, .32), transparent 70%),
+  radial-gradient(60% 55% at 40% 95%, rgba(37, 99, 235, .3), transparent 70%); }
+html[data-bg="forest"] .campus-bg{ background-image:
+  radial-gradient(60% 55% at 12% 15%, rgba(22, 163, 74, .34), transparent 70%),
+  radial-gradient(50% 50% at 88% 22%, rgba(202, 138, 4, .26), transparent 70%),
+  radial-gradient(60% 60% at 60% 92%, rgba(13, 148, 136, .3), transparent 70%); }
+html[data-bg="midnight"] .campus-bg{ background-image:
+  radial-gradient(60% 55% at 15% 10%, rgba(99, 102, 241, .45), transparent 70%),
+  radial-gradient(55% 50% at 90% 30%, rgba(168, 85, 247, .35), transparent 70%),
+  radial-gradient(60% 60% at 50% 100%, rgba(14, 116, 144, .35), transparent 70%),
+  linear-gradient(180deg, #1B1740, #0E0B22); }
+html[data-bg="midnight"]:not([data-theme="dark"]) .campus-bg::after{ background: linear-gradient(180deg, rgba(246, 244, 250, .72), rgba(246, 244, 250, .86)); }
+html[data-bg="aurora"] .campus-bg::before, html[data-bg="sunset"] .campus-bg::before,
+html[data-bg="ocean"] .campus-bg::before, html[data-bg="forest"] .campus-bg::before,
+html[data-bg="midnight"] .campus-bg::before, html[data-bg="aurora"] .cb-plan,
+html[data-bg="sunset"] .cb-plan, html[data-bg="ocean"] .cb-plan, html[data-bg="forest"] .cb-plan,
+html[data-bg="midnight"] .cb-plan{ display: none; }
+html[data-bg="aurora"] .campus-bg::after, html[data-bg="sunset"] .campus-bg::after,
+html[data-bg="ocean"] .campus-bg::after, html[data-bg="forest"] .campus-bg::after{ opacity: .35; }
+/* your own photo keeps the photo wash so text stays readable on anything */
+
+/* ------------------------------------------------------- light mode --
+   For slower Chromebooks: no blur behind glass, no drifting photo, no
+   parallax, no pointer effects. Chosen in Settings, or picked automatically
+   on low-memory devices. */
+html.lite *, html.lite *::before, html.lite *::after{ -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+html.lite .campus-bg{ transform: none !important; transition: none; }
+html.lite .campus-bg i.on{ animation: none !important; transform: scale(1.02); }
+html.lite .cb-depth, html.lite .cb-plan{ display: none; }
+html.lite .fx-rise{ filter: none !important; }
+html.lite .topbar, html.lite .now-dock, html.lite .to-top{ background: var(--surface); }
+html.lite ::view-transition-old(main), html.lite ::view-transition-new(main){ animation-duration: .18s; filter: none; }

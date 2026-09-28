@@ -27,12 +27,31 @@ var NAMES = {
 };
 var TAB_NAMES = { work: "Work", notebook: "Notes", help: "Help", calendar: "Calendar", announcements: "News", people: "People", voice: "Feedback" };
 var ACCENTS = [
-  ["plum", "Plum", "#5B2B8C"], ["ocean", "Ocean", "#1F5FBF"], ["forest", "Forest", "#1E7A4C"],
-  ["sunset", "Sunset", "#C4501A"], ["rose", "Rose", "#B8336A"]
+  ["plum", "Plum", "#5B2B8C"], ["ocean", "Ocean", "#1F5FBF"], ["teal", "Teal", "#0E7C7B"], ["forest", "Forest", "#1E7A4C"],
+  ["gold", "Gold", "#9A6F00"], ["sunset", "Sunset", "#C4501A"], ["rose", "Rose", "#B8336A"], ["slate", "Slate", "#3F4A5C"]
+];
+/* one tap sets the colour, the background and light or dark together */
+var THEMES = [
+  { id: "itzat",    name: "Itz'at",   accent: "plum",   bg: "sections", mode: "system", swatch: "url(assets/campus/front-640.webp) center/cover" },
+  { id: "aurora",   name: "Aurora",   accent: "plum",   bg: "aurora",   mode: "light",  swatch: "radial-gradient(circle at 20% 20%, #B794F4, transparent 60%), radial-gradient(circle at 85% 20%, #F6AD55, transparent 55%), radial-gradient(circle at 70% 90%, #7F9CF5, transparent 60%), #F4F1FA" },
+  { id: "sunset",   name: "Sunset",   accent: "sunset", bg: "sunset",   mode: "light",  swatch: "radial-gradient(circle at 85% 15%, #FF9A5A, transparent 60%), radial-gradient(circle at 15% 35%, #F472B6, transparent 55%), radial-gradient(circle at 60% 95%, #A78BFA, transparent 60%), #FBF3EE" },
+  { id: "ocean",    name: "Ocean",    accent: "ocean",  bg: "ocean",    mode: "light",  swatch: "radial-gradient(circle at 15% 15%, #38BDF8, transparent 60%), radial-gradient(circle at 90% 40%, #2DD4BF, transparent 55%), radial-gradient(circle at 40% 95%, #3B82F6, transparent 60%), #EFF6FB" },
+  { id: "forest",   name: "Forest",   accent: "forest", bg: "forest",   mode: "light",  swatch: "radial-gradient(circle at 15% 15%, #4ADE80, transparent 60%), radial-gradient(circle at 85% 25%, #FACC15, transparent 55%), radial-gradient(circle at 60% 95%, #2DD4BF, transparent 60%), #F1F7F2" },
+  { id: "midnight", name: "Midnight", accent: "ocean",  bg: "midnight", mode: "dark",   swatch: "radial-gradient(circle at 15% 10%, #6366F1, transparent 60%), radial-gradient(circle at 90% 30%, #A855F7, transparent 55%), linear-gradient(#1B1740, #0E0B22)" },
+  { id: "notebook", name: "Notebook", accent: "plum",   bg: "paper",    mode: "light",  swatch: "linear-gradient(rgba(91,43,140,.18) 1px, transparent 1px) 0 0/12px 12px, linear-gradient(90deg, rgba(91,43,140,.18) 1px, transparent 1px) 0 0/12px 12px, #FBFAF7" },
+  { id: "minimal",  name: "Minimal",  accent: "slate",  bg: "plain",    mode: "system", swatch: "linear-gradient(135deg, #F4F5F7 50%, #1E2330 50%)" }
+];
+var BGS = [
+  ["sections", "Campus", "A different spot for each section", "url(assets/campus/wings-640.webp) center/cover"],
+  ["daily", "Campus daily", "One photo, new each day", "url(assets/campus/courtyard-640.webp) center/cover"],
+  ["custom", "Your photo", "Pick any picture", ""],
+  ["aurora", "Aurora", "", THEMES[1].swatch], ["sunset", "Sunset", "", THEMES[2].swatch], ["ocean", "Ocean", "", THEMES[3].swatch],
+  ["forest", "Forest", "", THEMES[4].swatch], ["midnight", "Midnight", "", THEMES[5].swatch],
+  ["paper", "Graph paper", "", THEMES[6].swatch], ["plain", "Plain", "", "var(--bg)"]
 ];
 
 function defaults(){
-  return { accent: "plum", text: "m", density: "comfy", glass: "off", chat: "right", dock: "on",
+  return { theme: "itzat", accent: "plum", text: "m", density: "comfy", glass: "off", chat: "right", dock: "on", rail: "off",
     order: TOP.slice(), row: ROW.slice(), hidden: {}, collapsed: {}, tabsHidden: {} };
 }
 var look = load();
@@ -85,7 +104,9 @@ function blk(id){ return document.querySelector('[data-block="' + id + '"]'); }
 
 function apply(animate){
   var root = document.documentElement;
-  ["accent", "text", "density", "glass", "chat"].forEach(function(k){ root.setAttribute("data-" + k, look[k]); });
+  ["accent", "text", "density", "glass", "chat", "rail"].forEach(function(k){ root.setAttribute("data-" + k, look[k]); });
+  var rb = document.getElementById("railBtn");
+  if (rb){ var lbl = look.rail === "on" ? "Expand the sidebar" : "Collapse the sidebar"; rb.setAttribute("aria-label", lbl); rb.title = lbl + " ( [ )"; }
   var before = animate ? rects() : null;
 
   var hero = document.getElementById("hero");
@@ -312,26 +333,55 @@ function seg(name, value, opts){
 function row(title, sub, control){
   return '<div class="set-row"><div><b>' + title + "</b>" + (sub ? "<small>" + sub + "</small>" : "") + "</div>" + control + "</div>";
 }
-function lookHtml(){
-  return '<section class="set-sec"><h3>Make it yours</h3>' +
+function swatchTile(name, value, checked, label, sub, bg, extra){
+  return '<label class="tile' + (extra || "") + '"><input type="radio" name="' + name + '" value="' + value + '"' + (checked ? " checked" : "") + '>' +
+    '<span class="tile-pic" style="background:' + bg + '"></span><span class="tile-t"><b>' + esc(label) + "</b>" + (sub ? "<small>" + esc(sub) + "</small>" : "") + "</span></label>";
+}
+/* Settings > Look */
+function lookHtml(opts){
+  var bg = opts.bgMode, custom = opts.customImage;
+  return '<section class="set-sec"><h3>Themes</h3><p class="hint">Colour, background and light or dark in one tap. Change any part of it below.</p>' +
+    '<div class="tiles themes" role="radiogroup" aria-label="Theme">' + THEMES.map(function(t){
+      return swatchTile("setThemePreset", t.id, look.theme === t.id, t.name, "", t.swatch + "", " theme-tile a-" + t.accent);
+    }).join("") + "</div></section>" +
+  '<section class="set-sec"><h3>Background</h3>' +
+    '<div class="tiles bgs" role="radiogroup" aria-label="Background">' + BGS.map(function(b){
+      var pic = b[0] === "custom" ? (custom ? 'url(' + custom + ') center/cover' : 'repeating-linear-gradient(45deg, var(--surface-3) 0 8px, var(--surface-2) 8px 16px)') : b[3];
+      return swatchTile("setBgTile", b[0], bg === b[0], b[1], b[0] === "custom" ? (custom ? "Tap to change" : "Upload a picture") : b[2], pic, b[0] === "custom" ? " up" : "");
+    }).join("") + "</div>" +
+    '<div class="btn-row" style="margin-top:8px"><button class="btn ghost sm" id="setPhotos" type="button">' + svgIcon("i-image") + " See the campus photos</button></div>" +
+  "</section>" +
+  '<section class="set-sec"><h3>Colours and text</h3>' +
+    row("Light or dark", "System follows your device.", seg("setTheme", opts.themeChoice, [["system", "System"], ["light", "Light"], ["dark", "Dark"]])) +
     row("Accent colour", "Buttons, highlights and links.",
       '<div class="swatches" role="radiogroup" aria-label="Accent colour">' + ACCENTS.map(function(a){
         return '<label class="swatch" title="' + a[1] + '"><input type="radio" name="setAccent" value="' + a[0] + '"' + (look.accent === a[0] ? " checked" : "") + '><span style="--sw:' + a[2] + '"></span><em class="sr-only">' + a[1] + "</em></label>";
       }).join("") + "</div>") +
     row("Text size", "", seg("setText", look.text, [["s", "Small"], ["m", "Normal"], ["l", "Large"]])) +
     row("Spacing", "Compact fits more on the screen.", seg("setDensity", look.density, [["comfy", "Roomy"], ["compact", "Compact"]])) +
-    row("Glass cards", "Cards let a little of the campus photo through.", '<input type="checkbox" class="switch" id="setGlass"' + (look.glass === "on" ? " checked" : "") + ">") +
-    row("Dock \"right now\"", "A small pill with your current class on every other page.", '<input type="checkbox" class="switch" id="setDock"' + (look.dock === "on" ? " checked" : "") + ">") +
-    row("Chat button", "", seg("setChat", look.chat, [["right", "Right"], ["left", "Left"]])) +
+    row("Glass cards", "Cards let a little of the background through.", '<input type="checkbox" class="switch" id="setGlass"' + (look.glass === "on" ? " checked" : "") + ">") +
   "</section>" +
-  '<section class="set-sec"><h3>Layout</h3>' +
-    row("Today", "Move, collapse or hide the cards on Today.", '<button class="btn ghost sm" id="setCustomize" type="button">' + svgIcon("i-grid") + " Customize Today</button>") +
+  '<section class="set-sec"><h3>Speed</h3>' +
+    row("Effects", "Light turns off blur and moving backgrounds, for slower computers. Auto picks for you.",
+      seg("setFx", opts.fx, [["auto", "Auto"], ["full", "Full"], ["lite", "Light"]])) +
+    row("Motion", "Reduced turns off the bigger animations everywhere.", seg("setMotion", opts.motion, [["system", "Full"], ["reduce", "Reduced"]])) +
+  "</section>";
+}
+/* Settings > Layout */
+function layoutHtml(){
+  return '<section class="set-sec"><h3>Today</h3>' +
+    row("Cards on Today", "Move, collapse or hide them. Hidden ones come back from here.", '<button class="btn ghost sm" id="setCustomize" type="button">' + svgIcon("i-grid") + " Customize Today</button>") +
     '<div class="set-hidden" id="setHiddenList"></div>' +
-    '<div class="set-sub"><b>Sections in the menu</b><small>Today always stays.</small></div>' +
+  "</section>" +
+  '<section class="set-sec"><h3>Getting around</h3>' +
+    row("Sidebar", "On computers. The [ key does this too.", seg("setRail", look.rail, [["off", "Full"], ["on", "Icons only"]])) +
+    '<div class="set-sub"><b>Sections in the menu</b><small>Today always stays. Hidden sections still open from search.</small></div>' +
     '<div class="tab-toggles">' + Object.keys(TAB_NAMES).map(function(t){
       return '<label class="tt"><input type="checkbox" data-tab="' + t + '"' + (look.tabsHidden[t] ? "" : " checked") + "><span>" + TAB_NAMES[t] + "</span></label>";
     }).join("") + "</div>" +
-    '<div class="btn-row" style="margin-top:10px"><button class="btn ghost sm" id="setLookReset" type="button">Reset everything to the original</button></div>' +
+    row("Dock \"right now\"", "A small pill with your current class on every other page.", '<input type="checkbox" class="switch" id="setDock"' + (look.dock === "on" ? " checked" : "") + ">") +
+    row("Chat window", "Which side it opens on.", seg("setChat", look.chat, [["right", "Right"], ["left", "Left"]])) +
+    '<div class="btn-row" style="margin-top:10px"><button class="btn ghost sm" id="setLookReset" type="button">Reset looks and layout to the original</button></div>' +
   "</section>";
 }
 function paintHiddenList(box){
@@ -344,16 +394,44 @@ function paintHiddenList(box){
     b.addEventListener("click", function(){ delete look.hidden[b.dataset.show]; save(); apply(); paintHiddenList(box); toast(NAMES[b.dataset.show] + " is back."); });
   });
 }
+var hooks = {};
+function lookHooks(h){ hooks = h; }
 function wireLook(box, close){
   function radios(name, key){
     box.querySelectorAll('input[name="' + name + '"]').forEach(function(r){
       r.addEventListener("change", function(){ if (r.checked) set(key, r.value); });
     });
   }
-  radios("setAccent", "accent"); radios("setText", "text"); radios("setDensity", "density"); radios("setChat", "chat");
-  box.querySelector("#setGlass").addEventListener("change", function(e){ set("glass", e.target.checked ? "on" : "off"); });
-  box.querySelector("#setDock").addEventListener("change", function(e){ set("dock", e.target.checked ? "on" : "off"); });
-  box.querySelector("#setCustomize").addEventListener("click", function(){ close(); setTimeout(startCustomize, 60); });
+  radios("setAccent", "accent"); radios("setText", "text"); radios("setDensity", "density"); radios("setChat", "chat"); radios("setRail", "rail");
+  // a theme sets several things at once; changing one of them afterwards is fine
+  box.querySelectorAll('input[name="setThemePreset"]').forEach(function(r){
+    r.addEventListener("change", function(){
+      if (!r.checked) return;
+      var t = THEMES.filter(function(x){ return x.id === r.value; })[0]; if (!t) return;
+      look.theme = t.id; look.accent = t.accent; save(); apply();
+      if (hooks.setTheme) hooks.setTheme(t.mode);
+      if (hooks.setBg) hooks.setBg(t.bg);
+      var a = box.querySelector('input[name="setAccent"][value="' + t.accent + '"]'); if (a) a.checked = true;
+      var b = box.querySelector('input[name="setBgTile"][value="' + t.bg + '"]'); if (b) b.checked = true;
+      var m = box.querySelector('input[name="setTheme"][value="' + t.mode + '"]'); if (m) m.checked = true;
+      toast(t.name + " theme on.");
+    });
+  });
+  box.querySelectorAll('input[name="setBgTile"]').forEach(function(r){
+    r.addEventListener("click", function(){
+      if (r.value !== "custom") return;
+      // the custom tile always opens the picker, even when already chosen
+      if (hooks.pickBg) hooks.pickBg(function(url){
+        var pic = r.parentNode.querySelector(".tile-pic"); if (pic && url) pic.style.background = "url(" + url + ") center/cover";
+        var sm = r.parentNode.querySelector("small"); if (sm) sm.textContent = "Tap to change";
+      });
+    });
+    r.addEventListener("change", function(){ if (r.checked && r.value !== "custom" && hooks.setBg) hooks.setBg(r.value); });
+  });
+  var q = function(sel){ return box.querySelector(sel); };
+  if (q("#setGlass")) q("#setGlass").addEventListener("change", function(e){ set("glass", e.target.checked ? "on" : "off"); });
+  if (q("#setDock")) q("#setDock").addEventListener("change", function(e){ set("dock", e.target.checked ? "on" : "off"); });
+  if (q("#setCustomize")) q("#setCustomize").addEventListener("click", function(){ close(); setTimeout(startCustomize, 60); });
   box.querySelectorAll(".tab-toggles input").forEach(function(c){
     c.addEventListener("change", function(){
       if (c.checked) delete look.tabsHidden[c.dataset.tab]; else look.tabsHidden[c.dataset.tab] = true;
@@ -364,7 +442,7 @@ function wireLook(box, close){
       }
     });
   });
-  box.querySelector("#setLookReset").addEventListener("click", function(){
+  if (q("#setLookReset")) q("#setLookReset").addEventListener("click", function(){
     if (!window.confirm("Put the colours, layout and menu back to how they came?")) return;
     look = defaults(); save(); apply(true); close(); toast("Everything is back to the original.");
   });
@@ -374,6 +452,18 @@ function wireLook(box, close){
 function initLayout(){
   addCardTools();
   apply();
+  var rb = document.getElementById("railBtn");
+  if (rb) rb.addEventListener("click", function(){ set("rail", look.rail === "on" ? "off" : "on"); });
+  // the icon rail needs names on hover
+  document.querySelectorAll("nav.tabs button").forEach(function(b){
+    var l = b.querySelector(".lbl"); if (l && !b.title) b.title = l.textContent;
+  });
+  document.addEventListener("keydown", function(e){
+    var t = e.target;
+    if (e.key !== "[" || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+    set("rail", look.rail === "on" ? "off" : "on");
+  });
   var b = document.getElementById("customizeBtn");
   if (b) b.addEventListener("click", function(){ if (customizing) stopCustomize(); else startCustomize(); });
   window.addEventListener("3cs:title", paintDock);
@@ -382,4 +472,4 @@ function initLayout(){
   document.addEventListener("keydown", function(e){ if (customizing && e.key === "Escape") stopCustomize(); });
 }
 
-export { initLayout, lookHtml, wireLook, startCustomize, look as currentLook };
+export { initLayout, lookHtml, layoutHtml, wireLook, lookHooks, startCustomize, look as currentLook };

@@ -9,6 +9,29 @@
 
 var RELEASES = [
   {
+    version: "3.2",
+    date: "September 2026",
+    title: "Easier to get around",
+    added: [
+      "A sidebar on computers with every section in one place, grouped into School and Class",
+      "Shrink the sidebar to icons with the arrow at the bottom or the [ key",
+      "Every section has its own web address, and the browser's back button works",
+      "Eight ready-made themes, painted backgrounds, and your own photo as the background",
+      "Settings is organised into tabs: Look, Layout, Chat, Account and more",
+      "Teacher and Mod roles: teachers post news, mods keep chat, Help and Feedback tidy",
+      "Staff get a badge in chat, Help, News and People, and show first in People",
+      "Admins can rename people, lock a name, and hand out roles from Members and roles",
+      "A light effects mode that turns itself on for slower computers",
+      "Settings > Troubleshoot shows what's going on with your device and can refresh its data"
+    ],
+    fixed: [
+      "Sections no longer disappear off the edge of the menu on laptop screens or when zoomed in",
+      "Work shows every assignment, including ones with no due date field",
+      "Work and Notes now say what went wrong instead of looking empty",
+      "Notes no longer depend on a database index that was missing"
+    ]
+  },
+  {
     version: "3.1",
     date: "September 2026",
     title: "Make it yours",

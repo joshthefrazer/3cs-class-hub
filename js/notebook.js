@@ -118,7 +118,9 @@ function renderNotebook(){
   if (!notes.length){
     empty.hidden = false;
     var filtered = state.nbQuery || state.nbSubject !== "all" || state.nbVis !== "all";
-    empty.innerHTML = filtered
+    empty.innerHTML = state.notesError && !filtered
+      ? svgIcon("i-alert","big")+'<h3>Notes couldn\'t load on this device</h3><p>'+esc(dbErrMsg(state.notesError))+(state.notesError.code ? ' ('+esc(state.notesError.code)+')' : '')+'</p><div class="gate-actions"><button class="btn ghost sm" type="button" onclick="location.reload()">Try again</button></div>'
+      : filtered
       ? svgIcon("i-search-x","big")+'<h3>Nothing matches those filters</h3><p>Try clearing the search or picking “All subjects”.</p>'
       : svgIcon("i-book","big")+'<h3>The notebook is empty</h3><p>Add the first page: class notes, a homework breakdown, a revision checklist.</p>';
     return;

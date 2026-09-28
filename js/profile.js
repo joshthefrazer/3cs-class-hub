@@ -227,6 +227,14 @@ function openProfileSheet(){
 
   var nameIn = box.querySelector("#pfName");
   nameIn.value = name0;
+  // an admin can lock a name; then it's shown but can't be changed here
+  import("./roles.js").then(function(m){
+    if (BE.user && m.nameLocked(BE.user.id)){
+      nameIn.disabled = true;
+      nameIn.title = "An admin has set your name.";
+      var lab = nameIn.parentNode.querySelector("span"); if (lab) lab.textContent = "Your name (set by an admin)";
+    }
+  });
   box.querySelector("#pfEmail").textContent = (BE.user && BE.user.email) || "Signed in on this device";
   if (!usingFirebase()) box.querySelector("#pfSignOut").hidden = true;
 

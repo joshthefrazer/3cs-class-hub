@@ -151,6 +151,158 @@ nav.tabs button.active .ic{ stroke-width: 2.1; }
 .me-btn:hover .avatar{ box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--brand); }
 .auth-who{ font-size: .85rem; color: var(--ink-3); }
 
+/* ------------------------------------------------------- sidebar --
+   On computers the header becomes a sidebar: grouped sections that always
+   fit, whatever the screen width or zoom. It can shrink to an icon rail
+   ([ key, or the arrow at the bottom), and does so on its own on narrow
+   laptops. Phones keep the top bar and the bottom nav. */
+.side-search, .nav-group, .topbar .rail-btn{ display: none; }
+@media (min-width: 901px){
+  :root{ --side-w: 244px; }
+  html[data-rail="on"]{ --side-w: 78px; }
+  body{ padding-left: var(--side-w); }
+  html.booted body{ transition: padding-left .32s var(--ease-out); }
+  .topbar{
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: var(--side-w);
+    border-bottom: 0;
+    border-right: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
+    transition: width .32s var(--ease-out);
+  }
+  body.scrolled .topbar{ border-bottom-color: transparent; box-shadow: none; background: color-mix(in srgb, var(--surface) 82%, transparent); }
+  .topbar::after{ left: 100%; right: auto; width: 2px; height: 100%; bottom: auto; top: 0; transform-origin: 50% 0; transform: scaleY(0); }
+  @keyframes readLine{ to{ transform: scaleY(1); } }
+  .topbar-inner{
+    height: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 18px 12px 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+  }
+  .topbar-inner::-webkit-scrollbar{ display: none; }
+  .brand{ padding: 0 6px 10px; }
+  .side-search{
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 9px;
+    height: 40px;
+    padding: 0 10px 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-2);
+    color: var(--ink-3);
+    font-size: .88rem;
+    font-weight: 600;
+    text-align: left;
+    transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+  }
+  .side-search:hover{ border-color: var(--brand-line); color: var(--ink); }
+  .side-search .ic{ width: 17px; height: 17px; flex: none; }
+  .side-search span{ flex: 1; }
+  .side-search kbd{ font-size: .68rem; }
+  .hdr-search{ display: none !important; }
+  nav.tabs{ flex-direction: column; align-items: stretch; margin: 6px 0 0; padding: 0; gap: 2px; }
+  nav.tabs .tab-ink{ display: none; }
+  nav.tabs button{
+    justify-content: flex-start;
+    gap: 12px;
+    height: 40px;
+    padding: 0 12px;
+    font-size: .93rem;
+    text-align: left;
+  }
+  nav.tabs button .ic{ display: block !important; width: 19px; height: 19px; flex: none; }
+  nav.tabs button .lbl{ flex: 1; }
+  nav.tabs button.active{ background: var(--brand-soft); color: var(--brand-ink); }
+  nav.tabs button.active::before{
+    content: "";
+    position: absolute;
+    left: -12px; top: 9px; bottom: 9px;
+    width: 4px;
+    border-radius: 0 4px 4px 0;
+    background: var(--brand);
+    animation: navMark .35s var(--spring) both;
+  }
+  @keyframes navMark{ from{ transform: scaleY(0); } }
+  nav.tabs .tab-count{ margin-left: auto; }
+  .nav-group{ display: block; padding: 16px 12px 5px; font-size: .68rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-4); white-space: nowrap; }
+  .hdr-right{
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .hdr-right .auth-btn{ flex: 1; justify-content: center; }
+  .topbar .rail-btn{ display: grid; margin-left: auto; }
+  .rail-btn .ic{ transition: transform .32s var(--ease-out); }
+  /* the chat has its own place in the sidebar, so the floating button goes */
+  body .chat-fab{ display: none; }
+  body .to-top{ bottom: 24px; }
+  body .now-dock{ left: calc(var(--side-w) + 20px); }
+  html[data-chat="left"] body .now-dock{ left: auto; right: 24px; }
+  html[data-chat="left"] .messenger{ left: calc(var(--side-w) + 16px); }
+  body .custom-bar{ left: calc(50% + var(--side-w) / 2); }
+}
+/* the icon rail: chosen, or automatic on narrow laptops */
+@media (min-width: 901px) and (max-width: 1099px){ :root{ --side-w: 78px; } }
+@media (min-width: 901px){
+  html[data-rail="on"] .topbar-inner{ padding: 18px 10px 12px; align-items: center; }
+  html[data-rail="on"] .brand-txt,
+  html[data-rail="on"] nav.tabs .lbl,
+  html[data-rail="on"] .side-search span,
+  html[data-rail="on"] .side-search kbd,
+  html[data-rail="on"] .nav-group span{ display: none; }
+  html[data-rail="on"] .brand{ padding: 0 0 10px; }
+  html[data-rail="on"] .side-search{ width: 44px; padding: 0; justify-content: center; }
+  html[data-rail="on"] nav.tabs{ align-items: center; }
+  html[data-rail="on"] nav.tabs button{ width: 48px; padding: 0; justify-content: center; }
+  html[data-rail="on"] nav.tabs button.active::before{ left: -10px; }
+  html[data-rail="on"] nav.tabs .tab-count{ position: absolute; top: 3px; right: 2px; min-width: 16px; height: 16px; line-height: 16px; font-size: .62rem; }
+  html[data-rail="on"] .nav-group{ width: 28px; height: 1px; padding: 0; margin: 12px auto 8px; background: var(--line-strong); }
+  html[data-rail="on"] .hdr-right{ flex-direction: column; flex-wrap: nowrap; }
+  html[data-rail="on"] .hdr-right .auth-btn{ padding: 0 10px; font-size: .75rem; }
+  html[data-rail="on"] .rail-btn{ margin: 0; }
+  html[data-rail="on"] .rail-btn .ic{ transform: rotate(180deg); }
+}
+/* short laptop screens: tighten the sidebar so it all fits without scrolling */
+@media (min-width: 901px) and (max-height: 760px){
+  .topbar-inner{ padding-top: 12px; gap: 4px; }
+  .brand{ padding-bottom: 4px; }
+  .brand-mark{ width: 34px; height: 34px; }
+  nav.tabs button{ height: 35px; }
+  .nav-group{ padding-top: 10px; padding-bottom: 3px; }
+  .side-search{ height: 36px; }
+  html[data-rail="on"] .side-search{ width: 40px; height: 36px; }
+  html[data-rail="on"] .nav-group{ margin: 7px auto 5px; }
+  .hdr-right{ padding-top: 8px; }
+  .hdr-right .icon-btn{ width: 36px; height: 36px; }
+}
+@media (min-width: 901px) and (max-width: 1099px) and (max-height: 760px){ .nav-group{ margin: 7px auto 5px; } }
+@media (min-width: 901px) and (max-width: 1099px){
+  .topbar-inner{ padding: 18px 10px 12px; align-items: center; }
+  .brand-txt, nav.tabs .lbl, .side-search span, .side-search kbd, .nav-group span{ display: none; }
+  .brand{ padding: 0 0 10px; }
+  .side-search{ width: 44px; padding: 0; justify-content: center; }
+  nav.tabs{ align-items: center; }
+  nav.tabs button{ width: 48px; padding: 0; justify-content: center; }
+  nav.tabs button.active::before{ left: -10px; }
+  nav.tabs .tab-count{ position: absolute; top: 3px; right: 2px; min-width: 16px; height: 16px; line-height: 16px; font-size: .62rem; }
+  .nav-group{ width: 28px; height: 1px; padding: 0; margin: 12px auto 8px; background: var(--line-strong); }
+  .hdr-right{ flex-direction: column; flex-wrap: nowrap; }
+  .hdr-right .auth-btn{ padding: 0 10px; font-size: .75rem; }
+  .topbar .rail-btn{ display: none; }
+}
+
 /* ---------------------------------------------------- notice bars -- */
 .notice-bar{
   max-width: var(--page-max);
@@ -245,6 +397,9 @@ section.panel.active .page-head h1::after{ animation-name: markerDraw; }
   color: var(--ink-3);
   font-size: .86rem;
 }
+/* over a campus photo the credits get a pane of their own so they stay readable */
+html.campus-on .site-foot{ margin-bottom: 28px; border-radius: 18px; background: color-mix(in srgb, var(--surface) 80%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); padding: 18px 22px; width: calc(100% - 40px); }
+html.campus-on.lite .site-foot{ background: var(--surface); }
 .site-foot .credits{ display: flex; align-items: center; gap: 12px; max-width: 70ch; }
 .site-foot .credits b{ display: block; color: var(--ink-2); font-family: var(--display); }
 .site-foot .credits img{ opacity: .9; }
@@ -281,18 +436,12 @@ html.theme-swap::view-transition-old(root),
 html.theme-swap::view-transition-new(root){ animation: none; mix-blend-mode: normal; }
 
 /* ------------------------------------------------------- responsive -- */
-@media (max-width: 1180px){
-  .hdr-search .hs-lbl, .hdr-search kbd{ display: none; }
-  .hdr-search{ padding: 0 !important; width: 40px !important; }
-  nav.tabs button{ padding: 0 10px; font-size: .88rem; }
-}
-@media (max-width: 1060px){
-  nav.tabs button .ic{ display: none; }
-}
 
 @media (max-width: 900px){
   :root{ --bottom-h: calc(66px + env(safe-area-inset-bottom)); --header-h: 58px; }
   nav.tabs{ display: none; }
+  .hdr-search .hs-lbl, .hdr-search kbd{ display: none; }
+  .hdr-search{ padding: 0 !important; width: 40px !important; }
   .topbar-inner{ padding: 0 14px; gap: 10px; justify-content: space-between; }
   #appsBtn{ display: none; }
   main.wrap{ padding: 18px 14px 40px; }

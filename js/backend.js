@@ -35,6 +35,20 @@ var BE = {
   isAdmin: false
 };
 function usingFirebase(){ return BE.kind === "firebase"; }
+
+/* A short memory of what went wrong on this device, so "it doesn't work on
+   my computer" can be answered from Settings > Troubleshoot instead of
+   guessed at. Streams report their failures here as well as on the page. */
+var hubErrors = [];
+function noteErr(where, err){
+  var e = { where: where, code: (err && err.code) || "", msg: String((err && err.message) || err || "").slice(0, 240), at: new Date().toISOString() };
+  hubErrors.push(e);
+  if (hubErrors.length > 30) hubErrors.shift();
+  try{ window.dispatchEvent(new CustomEvent("3cs:err", { detail: e })); }catch(x){}
+  return e;
+}
+window.addEventListener("error", function(ev){ if (ev && ev.message) noteErr("page", { message: ev.message + (ev.filename ? " @ " + ev.filename.split("/").pop() + ":" + ev.lineno : "") }); });
+window.addEventListener("unhandledrejection", function(ev){ var r = ev && ev.reason; noteErr("promise", r); });
 function signedIn(){ return !usingFirebase() || !!BE.user; }
 
 /* Soft identity: only used by the artifact driver, which cannot verify
@@ -282,6 +296,7 @@ function startFirebase(){
         state.dbSettled = true;
         state.notes = []; state.posts = []; state.announcements = [];
         state.notesLoaded = false; state.postsLoaded = false;
+        state.assignments = []; state.workLoaded = false; state.workDone = {};
         setChat([]); setProfiles({});
         streamHooks.forEach(function(h){ try{ if (h.off) h.off(); }catch(e){} });
         paintAuth();
@@ -393,29 +408,24 @@ function startStreams(){
     }, function(){ /* terminal: keep last-known content on screen */ }));
 
   /* The class's work. Small collection, always worth having in full. */
-  streams.push(db.collection("assignments").orderBy("due","asc").limit(200).onSnapshot(function(qs){
-      var items = [];
-      qs.docs.forEach(function(d){ items.push(Object.assign({id:d.id}, d.data())); });
-      state.assignments = items;
+  /* The class's work. Small collection, always worth having in full.
+     Unordered on purpose: an orderBy("due") query silently leaves out any
+     assignment that has no "due" field at all (older rows, rows written by
+     hand in the console), and the page sorts them anyway. */
+  function takeWork(qs){
+    var items = [];
+    qs.docs.forEach(function(d){
+      try{ items.push(Object.assign({id:d.id}, d.data())); }catch(e){ noteErr("work-row", e); }
+    });
+    state.assignments = items;
+    state.workLoaded = true;
+    state.workError = null;
+    try{ renderWorkFilters(); renderWork(); paintWorkChip(); }catch(e){ noteErr("work-render", e); }
+  }
+  streams.push(db.collection("assignments").limit(300).onSnapshot(takeWork, function(err){
       state.workLoaded = true;
-      renderWorkFilters();
+      state.workError = noteErr("work", err);
       renderWork();
-      paintWorkChip();
-    }, function(){
-      /* An ordered query needs an index the first time. Fall back to an
-         unordered read so the list still appears while that is created. */
-      streams.push(db.collection("assignments").limit(200).onSnapshot(function(qs){
-        var items = [];
-        qs.docs.forEach(function(d){ items.push(Object.assign({id:d.id}, d.data())); });
-        state.assignments = items;
-        state.workLoaded = true;
-        renderWorkFilters();
-        renderWork();
-        paintWorkChip();
-      }, function(){
-        state.workLoaded = true;
-        renderWork();
-      }));
     }));
 
   streams.push(db.collection("announcements").orderBy("createdAt","desc").limit(50).onSnapshot(function(qs){
@@ -424,19 +434,23 @@ function startStreams(){
       items.sort(function(a,b){
         var ap = a.pinned?1:0, bp=b.pinned?1:0;
         if (ap!==bp) return bp-ap;
-        return (b.createdAt||"").localeCompare(a.createdAt||"");
+        return String(b.createdAt||"").localeCompare(String(a.createdAt||""));
       });
       state.announcements = items;
       renderAnnouncements();
-    }, function(){
-      document.getElementById("feedStatus").textContent = "Live feed unavailable in this view.";
+    }, function(err){
+      noteErr("news", err);
+      document.getElementById("feedStatus").textContent = "Live feed unavailable: " + dbErrMsg(err);
     }));
 
   /* Link-only notes are excluded server-side by the rules, so the browse
      query asks only for public ones. Your own link-only notes come back
      through the private/authored stream below. */
   var nbQuery = usingFirebase()
-    ? db.collection("notebook").where("visibility","==","public").orderBy("updatedAt","desc").limit(200)
+    /* no orderBy here: filter + sort together needs a composite index in the
+       Firebase console, and without one the query fails and the Notebook
+       shows up empty. The list is sorted on the page instead. */
+    ? db.collection("notebook").where("visibility","==","public").limit(300)
     : db.collection("notebook").orderBy("updatedAt","desc").limit(200);
   streams.push(nbQuery.onSnapshot(function(qs){
       var items = [];
@@ -446,8 +460,9 @@ function startStreams(){
       });
       state.notes = items;
       state.notesLoaded = true;
+      state.notesError = null;
       renderNotebook();
-    }, function(){ state.notesLoaded = true; renderNotebook(); }));
+    }, function(err){ state.notesLoaded = true; state.notesError = noteErr("notes", err); renderNotebook(); }));
 
   /* Notes you wrote, whatever their visibility — so link-only ones you
      created stay findable from the device that made them. */
@@ -485,7 +500,7 @@ function startStreams(){
         state.workDone = map;
         renderWork();
         paintWorkChip();
-      }, function(){}));
+      }, function(err){ noteErr("work-ticks", err); }));
   } else {
     loadLocalDone();
   }
@@ -544,4 +559,4 @@ function renderAllFallback(){
 }
 
 
-export { isOwnerEmail, registerStream, BE, FB_VERSION, ME, authorFields, canAdmin, checkAdmin, dbErrMsg, fmtAgo, fmtWhen, initDb, initFirebase, loadFirebaseSdk, meId, mergeField, mine, myName, paintAuth, renderAllFallback, requireDb, saveConfig, setMyName, showUnconfigured, signIn, signOutNow, signedIn, startFirebase, startStreams, stopStreams, streams, toast, toastTimer, usingFirebase };
+export { isOwnerEmail, registerStream, noteErr, hubErrors, BE, FB_VERSION, ME, authorFields, canAdmin, checkAdmin, dbErrMsg, fmtAgo, fmtWhen, initDb, initFirebase, loadFirebaseSdk, meId, mergeField, mine, myName, paintAuth, renderAllFallback, requireDb, saveConfig, setMyName, showUnconfigured, signIn, signOutNow, signedIn, startFirebase, startStreams, stopStreams, streams, toast, toastTimer, usingFirebase };

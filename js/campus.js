@@ -1,4 +1,5 @@
 import { svgIcon } from "./text.js";
+import { BE, registerStream } from "./backend.js";
 
 /* =========================================================
    OUR CAMPUS - the page background is a real photo of Itz'at STEAM
@@ -46,13 +47,19 @@ var OUTSIDE = ["front", "courtyard", "wings", "stairs", "pergola", "entrance"];
 var CREDIT = "Photo: Ministry of Education, Culture, Science and Technology, Belize";
 var SOURCE = "https://www.flickr.com/photos/193643118@N04/albums/72177720317011818";
 var KEY = "3cs_bg";
+/* every background there is: two kinds of campus photo, your own photo,
+   five painted gradients, graph paper, and plain */
+var MODES = ["sections", "daily", "custom", "aurora", "sunset", "ocean", "forest", "midnight", "paper", "plain"];
+var GRADIENTS = { aurora: 1, sunset: 1, ocean: 1, forest: 1, midnight: 1 };
+var IMG_KEY = "3cs_bgimg";
+function customImage(){ try{ return localStorage.getItem(IMG_KEY) || ""; }catch(e){ return ""; } }
 
 function src(id, w){ return "assets/campus/" + id + "-" + (w || 640) + ".webp"; }
 function bgSrc(id){ return "assets/campus/bg-" + id + ".webp"; }
 function indexOf(id){ for (var i = 0; i < PHOTOS.length; i++) if (PHOTOS[i].id === id) return i; return 0; }
 
 function bgMode(){
-  try{ var v = localStorage.getItem(KEY); return v === "daily" || v === "paper" ? v : "sections"; }catch(e){ return "sections"; }
+  try{ var v = localStorage.getItem(KEY); return MODES.indexOf(v) >= 0 ? v : "sections"; }catch(e){ return "sections"; }
 }
 function photoOfTheDay(){
   var d = new Date();
@@ -69,7 +76,8 @@ var layers = null, bgBox = null, front = 0, shown = null, loading = {};
 function paint(id){
   if (!layers || id === shown) return;
   shown = id;
-  var url = bgSrc(id);
+  var url = id === "custom" ? customImage() : bgSrc(id);
+  if (!url) return;
   function swap(){
     if (shown !== id) return;                      // someone moved on while it loaded
     var next = layers[1 - front];
@@ -92,20 +100,52 @@ function paint(id){
   img.onerror = function(){ loading[url] = false; };
   img.src = url;
   var name = document.getElementById("bgName");
-  if (name) name.textContent = PHOTOS[indexOf(id)].tag.toLowerCase();
+  if (name) name.textContent = id === "custom" ? "your own photo" : PHOTOS[indexOf(id)].tag.toLowerCase();
 }
 
 function applyBackground(){
   var mode = bgMode();
   var root = document.documentElement;
-  root.classList.toggle("campus-on", mode !== "paper");
-  if (mode === "paper"){
+  if (mode === "custom" && !customImage()) mode = "sections";
+  root.setAttribute("data-bg", mode);
+  root.classList.toggle("campus-on", mode !== "paper" && mode !== "plain");
+  var photo = mode === "sections" || mode === "daily" || mode === "custom";
+  if (!photo){
     shown = null;
     if (layers) layers.forEach(function(l){ l.classList.remove("on"); });
-    root.classList.remove("bg-ready");
+    root.classList.toggle("bg-ready", !!GRADIENTS[mode]);
+    var name = document.getElementById("bgName");
+    if (name) name.textContent = mode === "paper" ? "graph paper" : mode === "plain" ? "plain" : mode + " gradient";
     return;
   }
-  paint(photoFor(document.body.getAttribute("data-world") || "schedule"));
+  paint(mode === "custom" ? "custom" : photoFor(document.body.getAttribute("data-world") || "schedule"));
+}
+
+/* your own background: shrunk in the browser, kept here and on your account */
+function setCustomImage(data){
+  try{ localStorage.setItem(IMG_KEY, data); }
+  catch(e){ return Promise.reject(new Error("That picture is too big to keep in this browser. Try a smaller one.")); }
+  delete loading[data];
+  shown = null;
+  try{ localStorage.setItem(KEY, "custom"); }catch(e){}
+  applyBackground();
+  if (window.firebase && BE_REF.user && BE_REF.db){
+    return BE_REF.db.doc("users/" + BE_REF.user.id + "/prefs/bgimg").set({ data: data, at: new Date().toISOString() })
+      .catch(function(){ /* it's still in this browser */ });
+  }
+  return Promise.resolve();
+}
+var BE_REF = {};
+registerStream(function(){ bindBackend(BE); return []; }, function(){});
+function bindBackend(be){
+  BE_REF = be;
+  // a photo you picked on another computer comes along when you sign in
+  if (!be || !be.user || !be.db || customImage()) return;
+  be.db.doc("users/" + be.user.id + "/prefs/bgimg").get().then(function(d){
+    if (!d.exists || !d.data().data) return;
+    try{ localStorage.setItem(IMG_KEY, d.data().data); }catch(e){ return; }
+    if (bgMode() === "custom" || bgMode() === "sections") applyBackground();
+  }).catch(function(){});
 }
 
 function setBackgroundMode(mode){
@@ -136,7 +176,7 @@ function initBackground(){
   // the section lives on <body data-world>, so follow that
   new MutationObserver(function(){ if (bgMode() === "sections") applyBackground(); })
     .observe(document.body, { attributes: true, attributeFilter: ["data-world"] });
-  if (bgMode() !== "paper") preloadRest();
+  if (bgMode() === "sections") preloadRest();
   var name = document.getElementById("bgName");
   if (name) name.addEventListener("click", function(){ openGallery(indexOf(shown || "front")); });
 }
@@ -228,4 +268,4 @@ function openGallery(start){
 
 function initCampus(){ initBackground(); }
 
-export { initCampus, openGallery, setBackgroundMode, bgMode, PHOTOS, indexOf as campusIndex };
+export { initCampus, openGallery, setBackgroundMode, bgMode, setCustomImage, customImage, bindBackend, MODES, PHOTOS, indexOf as campusIndex };

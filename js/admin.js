@@ -8,6 +8,7 @@ import { REDUCED, renderHero, renderDayBar, updateTabInk, warpTo } from "./orbit
 import { renderLegend, saveLegend } from "./sched.js";
 import { ADMIN_HASH, hashPass, paintAdminSheet, setAdminUnlocked, state } from "./state.js";
 import { openNameSheet, svgIcon } from "./text.js";
+import { paintRoleUI } from "./roles.js";
 import { openSiteEditor } from "./adminpanel.js";
 import { replayReveal } from "./fx.js";
 import { wireAuthSheet, openAuthSheet } from "./auth.js";
@@ -35,6 +36,7 @@ function applyAdminMode(){
     renderFeedback();
     renderLegend();
     paintTrustNotes();
+    try{ paintRoleUI(); }catch(e){}  // roles.js may still be loading on the first call
     return;
   }
   if (!state.adminUnlocked) state.adminMode = false;
@@ -49,6 +51,7 @@ function applyAdminMode(){
   renderNotebook();
   renderHelp();
   renderLegend();
+  try{ paintRoleUI(); }catch(e){}
 }
 
 /* The honest description of privacy differs per backend, so it is written
@@ -114,6 +117,7 @@ function wire(){
   document.getElementById("tabs").addEventListener("click", function(e){
     var btn = e.target.closest("button[data-tab]");
     if (btn) warpTo(btn.getAttribute("data-tab"));
+    if (e.target.closest("#navChat")) openChat();
   });
   var bn = document.getElementById("bottomNav");
   if (bn) bn.addEventListener("click", function(e){

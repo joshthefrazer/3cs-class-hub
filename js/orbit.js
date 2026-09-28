@@ -29,7 +29,7 @@ import { initLayout } from "./layout.js";
    The day is drawn as a ruler, one block per session, with a marker that
    moves along it in real time.
    ========================================================= */
-var TABS = ["schedule", "work", "notebook", "help", "calendar", "announcements", "people", "voice"];
+var TABS = ["schedule", "work", "calendar", "notebook", "help", "announcements", "people", "voice"];
 
 var REDUCED = false;
 try{
@@ -515,8 +515,32 @@ function renderNextDay(){
    right, using the browser's view transitions where they exist and a plain
    CSS entrance everywhere else. */
 var navBusy = false;
-function warpTo(tab){
+/* Each section has its own address (#work, #notes, ...), so the browser's
+   back and forward buttons move between sections and a link can open one. */
+var SLUG = { schedule: "", work: "work", calendar: "calendar", notebook: "notes", help: "help", announcements: "news", people: "people", voice: "feedback" };
+function tabFromHash(){
+  var h = "";
+  try{ h = String(location.hash || "").replace(/^#/, "").toLowerCase(); }catch(e){}
+  if (!h || h.indexOf("note=") === 0) return null;
+  for (var k in SLUG) if (SLUG[k] === h || k === h) return k;
+  return h === "today" ? "schedule" : null;
+}
+function remember(tab, replace){
+  try{
+    if (String(location.hash).indexOf("#note=") === 0 && !replace) return;
+    var url = location.pathname + location.search + (SLUG[tab] ? "#" + SLUG[tab] : "");
+    if (replace) history.replaceState({ tab: tab }, "", url);
+    else history.pushState({ tab: tab }, "", url);
+  }catch(e){}
+}
+window.addEventListener("popstate", function(){
+  var t = tabFromHash() || "schedule";
+  if (t !== state.tab) warpTo(t, true);
+});
+
+function warpTo(tab, fromHistory){
   if (tab === state.tab || TABS.indexOf(tab) < 0) return;
+  if (!fromHistory) remember(tab);
   var from = TABS.indexOf(state.tab), to = TABS.indexOf(tab);
   document.documentElement.setAttribute("data-dir", to < from ? "back" : "fwd");
   // each section remembers how far down you were, for this visit
@@ -606,20 +630,25 @@ function boot(){
   renderGlobalBanner();
   applyAdminMode();
 
-  var startTab = "schedule";
-  try{
-    var lastTab = sessionStorage.getItem("3cs_tab");
-    if (lastTab && TABS.indexOf(lastTab) > -1) startTab = lastTab;
-  }catch(e){}
+  var startTab = tabFromHash() || "schedule";
+  if (!tabFromHash()){
+    try{
+      var lastTab = sessionStorage.getItem("3cs_tab");
+      if (lastTab && TABS.indexOf(lastTab) > -1) startTab = lastTab;
+    }catch(e){}
+  }
   setTab(startTab);
+  if (String(location.hash).indexOf("#note=") !== 0) remember(startTab, true);
   renderHero();
   renderDueSoon();
   requestAnimationFrame(updateTabInk);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(updateTabInk);
   var inkT = null;
   window.addEventListener("resize", function(){ clearTimeout(inkT); inkT = setTimeout(function(){ updateTabInk(); }, 120); });
-  var sb = document.getElementById("searchBtn");
-  if (sb) sb.addEventListener("click", function(){ showPalette(); });
+  ["searchBtn", "sideSearchBtn"].forEach(function(id){
+    var sb = document.getElementById(id);
+    if (sb) sb.addEventListener("click", function(){ showPalette(); });
+  });
 
   setInterval(tickNow, 1000);
   updateNowBits();

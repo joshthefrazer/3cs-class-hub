@@ -26,7 +26,7 @@ var dirty = false;
 
 var PANELS = [
   { key:"timetable", label:"Timetable", icon:"i-grid",  render: panelTimetable, field:"schedule2" },
-  { key:"calendar",  label:"Calendar",  icon:"i-cal",   render: panelCalendar,  field:"events"   },
+  { key:"calendar",  label:"Calendar",  icon:"i-calendar", render: panelCalendar,  field:"events"   },
   { key:"bells",     label:"Bell times",label2:"Bells", icon:"i-clock", render: panelBells, field:"bells" },
   { key:"subjects",  label:"Subjects",  icon:"i-book",  render: panelSubjects,  field:"legend"   },
   { key:"banner",    label:"Banner",    icon:"i-alert", render: panelBanner,    field:"globalBanner" }

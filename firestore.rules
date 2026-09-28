@@ -40,6 +40,33 @@ service cloud.firestore {
       );
     }
 
+    // Teachers and mods, set by admins in config/people.
+    //   teacher: posts and manages news (announcements)
+    //   mod:     keeps the public spaces tidy (class chat, help, feedback)
+    //            and can pause someone's chat access. Not private chats.
+    function peopleDoc() {
+      return /databases/$(database)/documents/config/people;
+    }
+    function roleOf(uid) {
+      return exists(peopleDoc()) ? get(peopleDoc()).data.get('roles', {}).get(uid, '') : '';
+    }
+    function isTeacher() {
+      return signedIn() && roleOf(request.auth.uid) == 'teacher';
+    }
+    function isMod() {
+      return signedIn() && roleOf(request.auth.uid) == 'mod';
+    }
+    function isStaff() {
+      return isAdmin() || isMod();
+    }
+    // an admin can lock someone's name so they can't change it back
+    function nameLocked(uid) {
+      return exists(peopleDoc()) && get(peopleDoc()).data.get('lockedNames', {}).get(uid, false) == true;
+    }
+    function nameOk(d) {
+      return d.name is string && d.name.size() > 0 && d.name.size() <= 40;
+    }
+
     // OPTIONAL - restrict the whole Hub to one email domain.
     // Swap the body for:  return signedIn() && myEmail().matches('.*@yourschool[.]edu[.]bz');
     function mayUseHub() {
@@ -149,8 +176,15 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
-    // Chat timeouts.
+    // Chat timeouts: admins and mods.
     match /config/moderation {
+      allow read:  if mayUseHub();
+      allow write: if isStaff();
+    }
+
+    // Roles and locked names. Everyone reads it (for the badges); admins
+    // change it.
+    match /config/people {
       allow read:  if mayUseHub();
       allow write: if isAdmin();
     }
@@ -158,9 +192,13 @@ service cloud.firestore {
     // ---- announcements ---------------------------------------------------
     // The official feed. Admin-only by design: this is the teacher's voice.
 
+    // Teachers can post too, and manage what they posted.
     match /announcements/{id} {
       allow read:  if mayUseHub();
-      allow write: if isAdmin();
+      allow create: if isAdmin()
+                    || (isTeacher() && request.resource.data.get('authorUid', '') == request.auth.uid);
+      allow update, delete: if isAdmin()
+                    || (isTeacher() && resource.data.get('authorUid', '') == request.auth.uid);
     }
 
     // ---- class notebook --------------------------------------------------
@@ -255,19 +293,26 @@ service cloud.firestore {
     match /profiles/{uid} {
       allow read: if mayUseHub();
 
-      allow create, update: if signedIn()
+      allow create, update: if (signedIn()
                     && request.auth.uid == uid
                     && request.resource.data.keys().hasOnly(['name', 'photo', 'updatedAt'])
-                    && request.resource.data.name is string
-                    && request.resource.data.name.size() > 0
-                    && request.resource.data.name.size() <= 40
+                    && nameOk(request.resource.data)
                     && request.resource.data.photo is string
                     && request.resource.data.photo.size() <= 90000
                     && (request.resource.data.photo == '' ||
                         request.resource.data.photo.split(',')[0] in
                           ['data:image/webp;base64', 'data:image/jpeg;base64', 'data:image/png;base64'])
                     && request.resource.data.updatedAt is string
-                    && request.resource.data.updatedAt.size() <= 40;
+                    && request.resource.data.updatedAt.size() <= 40
+                    && (!nameLocked(uid) || (resource != null && request.resource.data.name == resource.data.name)))
+                    // an admin can rename anyone (and nothing else)
+                    || (isAdmin()
+                    && request.resource.data.keys().hasOnly(['name', 'photo', 'updatedAt'])
+                    && nameOk(request.resource.data)
+                    && request.resource.data.get('photo', '') is string
+                    && (resource == null
+                        ? request.resource.data.get('photo', '') == ''
+                        : request.resource.data.get('photo', '') == resource.data.get('photo', '')));
 
       allow delete: if (signedIn() && request.auth.uid == uid) || isAdmin();
     }
@@ -291,7 +336,14 @@ service cloud.firestore {
                         || (request.resource.data.listed == false && request.resource.data.email == ''))
                     && request.resource.data.lastSeen == request.time
                     && request.resource.data.updatedAt is string
-                    && request.resource.data.updatedAt.size() <= 40;
+                    && request.resource.data.updatedAt.size() <= 40
+                    && (!nameLocked(uid)
+                        || request.resource.data.name == get(/databases/$(database)/documents/profiles/$(uid)).data.name);
+
+      // an admin renaming someone updates their entry here too
+      allow update: if isAdmin()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'updatedAt'])
+                    && nameOk(request.resource.data);
 
       allow delete: if (signedIn() && request.auth.uid == uid) || isAdmin();
     }
@@ -302,7 +354,7 @@ service cloud.firestore {
       allow read: if mayUseHub();
       allow create: if mayUseHub() && msgOk(request.resource.data) && !chatBlocked();
       allow update: if mayUseHub() && (reactionOnly() || ownEdit());
-      allow delete: if (signedIn() && resource.data.uid == request.auth.uid) || isAdmin();
+      allow delete: if (signedIn() && resource.data.uid == request.auth.uid) || isStaff();
     }
 
     // ---- private chats and group chats ------------------------------------
@@ -606,7 +658,7 @@ service cloud.firestore {
                              + (request.auth.uid in request.resource.data.votes ? 1 : 0)
                              - (request.auth.uid in resource.data.votes ? 1 : 0));
 
-      allow delete: if isAdmin() || (signedIn() && fbMine(fid));
+      allow delete: if isStaff() || (signedIn() && fbMine(fid));
     }
 
     match /feedbackAuthors/{fid} {
@@ -640,16 +692,18 @@ service cloud.firestore {
       allow update: if mayUseHub() && keepsAuthor() && (
                       isAdmin()
                       || existingIsMine()
+                      // mods can pin, lock and resolve, but not rewrite someone's post
+                      || (isMod() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pinned', 'locked', 'resolved']))
                       || request.resource.data.diff(resource.data)
                            .affectedKeys()
                            .hasOnly(['reactions', 'replyCount'])
                     ) && (
-                      isAdmin()
+                      isStaff()
                       || (request.resource.data.pinned == resource.data.pinned
                           && request.resource.data.locked == resource.data.locked)
                     );
 
-      allow delete: if isAdmin() || existingIsMine();
+      allow delete: if isStaff() || existingIsMine();
 
       match /replies/{replyId} {
         allow read: if mayUseHub();
@@ -663,7 +717,7 @@ service cloud.firestore {
                       && get(/databases/$(database)/documents/help/$(postId)).data.locked == false;
 
         allow update: if false;
-        allow delete: if isAdmin() || existingIsMine();
+        allow delete: if isStaff() || existingIsMine();
       }
     }
 

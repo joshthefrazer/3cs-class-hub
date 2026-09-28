@@ -10,6 +10,7 @@ import { STICKERS, stickerEl, stickerName } from "./stickers.js";
 import { compressImage, prepareGif, uploadMedia, mediaEl, pickFiles, mediaError } from "./media.js";
 import { getPref } from "./settings.js";
 import { people, isOnline, seenText } from "./people.js";
+import { canModerate, roleBadgeEl } from "./roles.js";
 
 /* =========================================================
    MESSAGES - the 3CS class room, private chats and group chats.
@@ -354,6 +355,8 @@ function paintBadge(){
   if (b){ b.hidden = !total; b.textContent = total > 9 ? "9+" : String(total); }
   var bb = el("bnChatBadge");
   if (bb){ bb.hidden = !total; bb.textContent = total > 9 ? "9+" : String(total); }
+  var nb = el("navChatCount");
+  if (nb){ nb.hidden = !total; nb.textContent = total > 9 ? "9+" : String(total); }
   var fab = el("chatFab");
   if (fab) fab.setAttribute("aria-label", total ? "Open messages, " + total + " unread" : "Open messages");
   setTitleCount(total);
@@ -756,6 +759,7 @@ function renderThread(){
       var nm = document.createElement("div");
       nm.className = "msg-name";
       nm.appendChild(document.createTextNode(m.uid === myId ? "You" : displayName(m.uid, m.name)));
+      var rb = roleBadgeEl(m.uid); if (rb) nm.appendChild(rb);
       var tm = document.createElement("time");
       tm.textContent = clock(t);
       tm.dateTime = new Date(t).toISOString();
@@ -1159,7 +1163,8 @@ function popMenu(anchor, items){
 
 function msgMenu(anchor, m){
   var mine = m.uid === me();
-  var admin = canAdmin();
+  // admins everywhere; mods in the class room only (never private chats)
+  var admin = canAdmin() || (active === MAIN && canModerate());
   var items = [
     { icon: "i-reply", label: "Reply", run: function(){ startReply(m); } },
     m.text ? { icon: "i-copy", label: "Copy text", run: function(){
@@ -1678,14 +1683,14 @@ function convoMenu(anchor){
     } });
   } else {
     items.push({ icon: "i-user-plus", label: "Start a private chat", run: openNewChat });
-    if (canAdmin()) items.push({ icon: "i-shield", label: "Moderation", run: openModeration });
+    if (canModerate()) items.push({ icon: "i-shield", label: "Moderation", run: openModeration });
   }
   popMenu(anchor, items);
 }
 
 /* ------------------------------------------------------- moderation ---- */
 function setBlocked(uid, on){
-  if (!canAdmin() || !usingFirebase()) return Promise.resolve();
+  if (!canModerate() || !usingFirebase()) return Promise.resolve();
   var FV = firebase.firestore.FieldValue;
   return BE.db.doc("config/moderation").set({
     chatBlocked: on ? FV.arrayUnion(uid) : FV.arrayRemove(uid),
@@ -1695,13 +1700,15 @@ function setBlocked(uid, on){
   }).catch(function(err){ toast(dbErrMsg(err), true); });
 }
 function openModeration(){
-  if (!canAdmin()){ toast("Admins only.", true); return; }
+  if (!canModerate()){ toast("Admins and mods only.", true); return; }
   var box = openSheet(
-    '<div class="sheet-head"><div><h2>Moderation</h2><p class="hint">Owners and admins can read every chat, delete any message, and pause someone\'s chat access.</p></div>' +
+    '<div class="sheet-head"><div><h2>Moderation</h2><p class="hint">' + (canAdmin()
+      ? 'Owners and admins can read every chat, delete any message, and pause someone\'s chat access.'
+      : 'Mods can delete messages in the class chat and pause someone\'s chat access.') + '</p></div>' +
     '<button class="sheet-close" type="button" aria-label="Close">' + svgIcon("i-close") + '</button></div>' +
     '<div class="set-sec"><h3>Chat access</h3><div id="modList"></div></div>' +
-    '<div class="set-sec"><h3>Conversations</h3><p class="hint">See every private and group chat from the chat list. The people in them aren\'t told.</p>' +
-    '<div class="btn-row" style="margin-top:10px"><button class="btn ghost sm" id="modAll" type="button">' + svgIcon("i-msg") + ' Open every chat</button></div></div>'
+    (canAdmin() ? '<div class="set-sec"><h3>Conversations</h3><p class="hint">See every private and group chat from the chat list. The people in them aren\'t told.</p>' +
+    '<div class="btn-row" style="margin-top:10px"><button class="btn ghost sm" id="modAll" type="button">' + svgIcon("i-msg") + ' Open every chat</button></div></div>' : '')
   );
   box.classList.add("wide");
   var list = box.querySelector("#modList");
@@ -1728,7 +1735,8 @@ function openModeration(){
     r.appendChild(sw);
     list.appendChild(r);
   });
-  box.querySelector("#modAll").addEventListener("click", function(){
+  var modAll = box.querySelector("#modAll");
+  if (modAll) modAll.addEventListener("click", function(){
     closeSheet();
     openChat();
     if (!adminAll) toggleAdminAll();
@@ -1774,6 +1782,7 @@ function renderPeek(){
 
 /* --------------------------------------------------------------- init -- */
 function initChat(){
+  window.addEventListener("3cs:roles", function(){ try{ renderAll(); }catch(e){} });
   var fab = el("chatFab");
   if (fab) fab.addEventListener("click", toggleChat);
   var po = el("peekOpen");
@@ -1800,7 +1809,7 @@ function initChat(){
   registerCommands(function(){
     var out = [{ kind:"Do", title:"Open messages", hint:"the class chat and your private chats", run:function(){ openChat(); } }];
     if (usingFirebase() && BE.user) out.push({ kind:"Do", title:"Start a new chat", hint:"private or group", run:openNewChat });
-    if (canAdmin()) out.push({ kind:"Do", title:"Moderation", hint:"chat access, every chat", run:openModeration });
+    if (canModerate()) out.push({ kind:"Do", title:"Moderation", hint:"chat access", run:openModeration });
     return out;
   });
   state.chat = state.chat || [];

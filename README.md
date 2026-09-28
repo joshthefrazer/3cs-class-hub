@@ -20,8 +20,9 @@ Live at https://joshthefrazer.github.io/3cs-class-hub/
 - **Messages**: the 3CS class room, private chats and group chats. Emoji, 22 animated stickers made for the Hub, a class GIF library, pictures, reactions, replies, @mentions, editing, muting, hiding and pinning, and pop-up notifications at the side.
 - **Campus background**: real photos of the Itz'at campus behind every page, a different spot for each section (or one a day, or plain graph paper, in Settings). Photos by the Ministry of Education, Culture, Science and Technology, Belize, from their [opening-day album](https://www.flickr.com/photos/193643118@N04/albums/72177720317011818). They live in `assets/campus`; the list is in `js/campus.js`.
 - **Polls & feedback**: admins run polls (results can't be faked; the rules check every vote), and anyone can post ideas, report problems or ask for changes, with upvotes. Anonymous posts hide the name from classmates but not from admins.
-- **Make it yours**: move, collapse or hide any card on Today, hide sections from the menu, dock a "right now" pill on every page, and pick an accent colour, text size, spacing and glass cards. Saved to your account.
-- **Settings**: theme, motion, background, look and layout, the welcome animation, notifications, email privacy.
+- **Getting around**: on computers a sidebar holds every section, grouped into School and Class, and shrinks to icons (the arrow at the bottom, or the `[` key). Every section has its own address (`#work`, `#notes`, `#news`...), so links and the back button work. Phones keep the bottom bar.
+- **Make it yours**: eight themes, painted backgrounds or your own photo, accent colour, text size, spacing and glass cards; move, collapse or hide any card on Today, hide sections from the menu, and dock a "right now" pill on every page. Saved to your account.
+- **Settings**: tabs for Look, Layout, Chat, Welcome, Account, staff tools, Shortcuts and Troubleshoot. Troubleshoot shows the device's browser, sign-in state and any errors, can copy a report, and can clear the device's cached data.
 - **Welcome animation**: what's new, the credits, and the welcome. It plays on the first visit each day by default.
 
 ## How it's built
@@ -35,6 +36,19 @@ Plain HTML, CSS and JavaScript modules. No build step. Data lives in Firebase (F
 Two accounts are always owners and can see and moderate everything, including private chats: `joshthefrazer@gmail.com` and `joshua.malic@sls.edu.bz`. They're listed in `firestore.rules` (`isOwner`) and in `index.html` (`HUB_OWNERS`), which must match. Other admins can be added by an owner through the `config/admins` document.
 
 Admins can delete any message, pause someone's chat access (Settings, Moderation), read every conversation, post announcements and edit the site's timetable, calendar and bell times.
+
+## Roles
+
+Admins hand out roles in Settings > Admin > Members and roles, where they can also rename anyone and lock a name so its owner can't change it. Roles live in `config/people` and the rules check the same document.
+
+| Role | Can |
+| --- | --- |
+| Owner | Everything, including making admins |
+| Admin | Everything except making admins |
+| Teacher | Post news, and edit or delete their own posts |
+| Mod | Delete messages in the class chat, Help posts and feedback; pin, lock and resolve Help threads; pause someone's chat access. Not private chats. |
+
+Everyone with a role gets a badge next to their name in chat, Help, News and People, and staff are listed first in People.
 
 ## Updating the "What's new" list
 

@@ -5,6 +5,7 @@ import { avatarEl, displayName, onProfiles } from "./profile.js";
 import { registerCommands } from "./palette.js";
 import { openAuthSheet } from "./auth.js";
 import { openDM, newGroupWith, isBlocked, setBlocked } from "./chat.js";
+import { roleBadgeHtml, canModerate, roleOf } from "./roles.js";
 
 /* =========================================================
    PEOPLE - everyone's school email, in one place.
@@ -23,11 +24,15 @@ var lastTouch = 0;
 var selected = {};
 var query = "";
 
+var RANK = { owner: 1, admin: 2, teacher: 3, mod: 4 };
 function dir(){ return state.directory || {}; }
 function people(){
   var d = dir();
   return Object.keys(d).map(function(uid){ return Object.assign({ uid: uid }, d[uid]); })
     .sort(function(a, b){
+      // staff first (owners, admins, teachers, mods), then everyone by name
+      var ra = RANK[roleOf(a.uid)] || 9, rb = RANK[roleOf(b.uid)] || 9;
+      if (ra !== rb) return ra - rb;
       var an = displayName(a.uid, a.name).toLowerCase(), bn = displayName(b.uid, b.name).toLowerCase();
       return an < bn ? -1 : an > bn ? 1 : 0;
     });
@@ -175,7 +180,8 @@ function renderPeople(){
 
   list.forEach(function(p, i){
     var card = document.createElement("article");
-    card.className = "person" + (selected[p.uid] ? " sel" : "");
+    var role = roleOf(p.uid);
+    card.className = "person" + (selected[p.uid] ? " sel" : "") + (role ? " staff r-" + role : "");
     card.style.animationDelay = Math.min(i * 30, 300) + "ms";
     var name = displayName(p.uid, p.name);
     var mail = emailOf(p.uid);
@@ -192,9 +198,8 @@ function renderPeople(){
     id.innerHTML = "<b></b><small></small>";
     id.querySelector("b").textContent = name;
     if (p.uid === me) id.querySelector("b").insertAdjacentHTML("beforeend", '<span class="you">you</span>');
-    if (isOwnerEmail(p.email) || (BE.adminEmails || []).indexOf(String(p.email || "").toLowerCase()) > -1)
-      id.querySelector("b").insertAdjacentHTML("beforeend", '<span class="adm">admin</span>');
-    if (BE.isAdmin && isBlocked(p.uid)) id.querySelector("b").insertAdjacentHTML("beforeend", '<span class="badge bad">timed out</span>');
+    id.querySelector("b").insertAdjacentHTML("beforeend", roleBadgeHtml(p.uid));
+    if (canModerate() && isBlocked(p.uid)) id.querySelector("b").insertAdjacentHTML("beforeend", '<span class="badge bad">timed out</span>');
     id.querySelector("small").textContent = seenText(p);
     top.appendChild(id);
     card.appendChild(top);
@@ -273,6 +278,7 @@ function paintSelBar(){
 function selectedIds(){ return Object.keys(selected).filter(function(u){ return dir()[u]; }); }
 
 function initPeople(){
+  window.addEventListener("3cs:roles", function(){ renderPeople(); });
   var s = document.getElementById("peopleSearch");
   if (s) s.addEventListener("input", function(){ query = s.value; renderPeople(); });
   var ca = document.getElementById("peopleCopyAll");

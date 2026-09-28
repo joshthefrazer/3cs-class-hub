@@ -4,6 +4,7 @@ import { state } from "./state.js";
 import { openNameSheet, svgIcon } from "./text.js";
 import { avatarEl, displayName, onProfiles } from "./profile.js";
 import { subjectColor } from "./sched.js";
+import { canModerate, roleBadgeEl } from "./roles.js";
 
 /* =========================================================
    8. Help & Reminders board
@@ -120,6 +121,7 @@ function buildPostCard(p, i){
   who.className = "who";
   who.appendChild(avatarEl(p.authorUid || p.authorToken, p.authorName, "xs"));
   who.appendChild(document.createTextNode(p.authorUid ? displayName(p.authorUid, p.authorName) : (p.authorName || "Anonymous")));
+  var hb = p.authorUid ? roleBadgeEl(p.authorUid) : null; if (hb) who.appendChild(hb);
   head.insertBefore(who, head.firstChild);
   var when = document.createElement("span");
   when.textContent = fmtAgo(p.createdAt);
@@ -153,14 +155,14 @@ function buildPostCard(p, i){
   threadBtn.addEventListener("click", function(){ openThread(p.id); });
   actions.appendChild(threadBtn);
 
-  if (p.kind !== "reminder" && (mine(p) || canAdmin())){
+  if (p.kind !== "reminder" && (mine(p) || canModerate())){
     var res = document.createElement("button");
     res.type = "button"; res.className = "linkbtn";
     res.textContent = p.resolved ? "Mark unresolved" : "Mark resolved";
     res.addEventListener("click", function(){ patchPost(p.id, { resolved: !p.resolved }); });
     actions.appendChild(res);
   }
-  if (canAdmin()){
+  if (canModerate()){
     var pin = document.createElement("button");
     pin.type = "button"; pin.className = "linkbtn";
     pin.textContent = p.pinned ? "Unpin" : "Pin";
@@ -173,7 +175,7 @@ function buildPostCard(p, i){
     lock.addEventListener("click", function(){ patchPost(p.id, { locked: !p.locked }); });
     actions.appendChild(lock);
   }
-  if (mine(p) || canAdmin()){
+  if (mine(p) || canModerate()){
     var del = document.createElement("button");
     del.type = "button"; del.className = "linkbtn danger";
     del.textContent = "Delete";
@@ -219,7 +221,7 @@ function buildThread(p){
     var t = document.createElement("span");
     t.textContent = fmtAgo(r.createdAt);
     meta.appendChild(t);
-    if (mine(r) || canAdmin()){
+    if (mine(r) || canModerate()){
       var d = document.createElement("button");
       d.type = "button"; d.className = "linkbtn danger"; d.textContent = "Delete";
       var armed = false;

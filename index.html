@@ -24,18 +24,24 @@
   /* Runs before first paint: picks the theme so there is no flash of the
      wrong one, applies the motion setting, and decides whether the welcome
      animation plays. Keep HUB_VERSION in step with js/updates.js. */
-  window.HUB_VERSION = "3.1";
+  window.HUB_VERSION = "3.2";
   (function(){
     var d = document.documentElement;
     function get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
     var t = get("3cs_theme");
     if (t === "dark" || t === "light") d.setAttribute("data-theme", t);
     if (get("3cs_motion") === "reduce") d.classList.add("reduce-motion");
-    if (get("3cs_bg") !== "paper") d.classList.add("campus-on");
+    var bg = get("3cs_bg") || "sections";
+    d.setAttribute("data-bg", bg);
+    if (bg !== "paper" && bg !== "plain") d.classList.add("campus-on");
+    /* light effects for slower computers: chosen, or automatic on low memory */
+    var fx = get("3cs_fx") || "auto";
+    var weak = (navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) || (navigator.connection && navigator.connection.saveData);
+    if (fx === "lite" || (fx === "auto" && weak)) d.classList.add("lite");
     /* your look (Settings > Look): accent colour, text size, density, glass */
     try{
       var look = JSON.parse(get("3cs_look") || "{}");
-      ["accent", "text", "density", "glass", "chat"].forEach(function(k){ if (look[k]) d.setAttribute("data-" + k, look[k]); });
+      ["accent", "text", "density", "glass", "chat", "rail"].forEach(function(k){ if (look[k]) d.setAttribute("data-" + k, look[k]); });
     }catch(e){}
     if ("startViewTransition" in document) d.classList.add("vt");
     setTimeout(function(){ d.classList.add("booted"); }, 5000);
@@ -61,12 +67,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Caveat:wght@600;700&family=Figtree:wght@400..800&family=JetBrains+Mono:wght@400..600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Caveat:wght@600;700&family=Figtree:wght@400..800&family=JetBrains+Mono:wght@400..600&display=swap"></noscript>
-<link rel="stylesheet" href="styles/theme.css">
-<link rel="stylesheet" href="styles/layout.css">
-<link rel="stylesheet" href="styles/components.css">
-<link rel="stylesheet" href="styles/features.css">
-<link rel="stylesheet" href="styles/social.css">
-<link rel="stylesheet" href="styles/intro.css">
+<link rel="stylesheet" href="styles/theme.css?v=3.2">
+<link rel="stylesheet" href="styles/layout.css?v=3.2">
+<link rel="stylesheet" href="styles/components.css?v=3.2">
+<link rel="stylesheet" href="styles/features.css?v=3.2">
+<link rel="stylesheet" href="styles/social.css?v=3.2">
+<link rel="stylesheet" href="styles/intro.css?v=3.2">
 <link rel="preload" as="image" href="assets/campus/bg-front.webp" type="image/webp">
 <link rel="modulepreload" href="js/main.js">
 <link rel="modulepreload" href="js/orbit.js">
@@ -94,6 +100,7 @@
 <link rel="modulepreload" href="js/palette.js">
 <link rel="modulepreload" href="js/people.js">
 <link rel="modulepreload" href="js/profile.js">
+<link rel="modulepreload" href="js/roles.js">
 <link rel="modulepreload" href="js/sched.js">
 <link rel="modulepreload" href="js/settings.js">
 <link rel="modulepreload" href="js/stickers.js">
@@ -313,13 +320,18 @@
       <span class="brand-txt"><b>3CS</b><small>Class Hub</small></span>
     </a>
 
+    <button class="side-search" id="sideSearchBtn" type="button" aria-label="Search everything"><svg class="ic" aria-hidden="true"><use href="#i-search"></use></svg><span>Search</span><kbd>Ctrl K</kbd></button>
+
     <nav class="tabs" id="tabs" aria-label="Sections">
       <span class="tab-ink" id="tabInk" aria-hidden="true"></span>
       <button type="button" data-tab="schedule" class="active" aria-current="page"><svg class="ic" aria-hidden="true"><use href="#i-home"></use></svg><span class="lbl">Today</span></button>
+      <span class="nav-group" aria-hidden="true"><span>School</span></span>
       <button type="button" data-tab="work"><svg class="ic" aria-hidden="true"><use href="#i-clipboard"></use></svg><span class="lbl">Work</span><span class="tab-count" id="tabCountWork" hidden></span></button>
-      <button type="button" data-tab="notebook"><svg class="ic" aria-hidden="true"><use href="#i-notebook"></use></svg><span class="lbl">Notes</span></button>
-      <button type="button" data-tab="help"><svg class="ic" aria-hidden="true"><use href="#i-help"></use></svg><span class="lbl">Help</span></button>
       <button type="button" data-tab="calendar"><svg class="ic" aria-hidden="true"><use href="#i-calendar"></use></svg><span class="lbl">Calendar</span></button>
+      <button type="button" data-tab="notebook"><svg class="ic" aria-hidden="true"><use href="#i-notebook"></use></svg><span class="lbl">Notes</span></button>
+      <span class="nav-group" aria-hidden="true"><span>Class</span></span>
+      <button type="button" data-action="chat" id="navChat"><svg class="ic" aria-hidden="true"><use href="#i-msg"></use></svg><span class="lbl">Chat</span><span class="tab-count" id="navChatCount" hidden></span></button>
+      <button type="button" data-tab="help"><svg class="ic" aria-hidden="true"><use href="#i-help"></use></svg><span class="lbl">Help</span></button>
       <button type="button" data-tab="announcements"><svg class="ic" aria-hidden="true"><use href="#i-megaphone"></use></svg><span class="lbl">News</span></button>
       <button type="button" data-tab="people"><svg class="ic" aria-hidden="true"><use href="#i-people"></use></svg><span class="lbl">People</span></button>
       <button type="button" data-tab="voice"><svg class="ic" aria-hidden="true"><use href="#i-poll"></use></svg><span class="lbl">Feedback</span><span class="tab-count" id="tabCountVoice" hidden></span></button>
@@ -335,6 +347,7 @@
       <button class="admin-toggle" id="adminToggleBtn" type="button" hidden><svg class="ic" aria-hidden="true"><use href="#i-lock"></use></svg><span>Admin</span></button>
       <button class="me-btn" id="meBtn" type="button" hidden aria-label="Your profile"></button>
       <button class="btn sm auth-btn" id="authBtn" type="button" hidden>Sign in</button>
+      <button class="icon-btn rail-btn" id="railBtn" type="button" aria-label="Collapse the sidebar" title="Collapse the sidebar ( [ )"><svg class="ic" aria-hidden="true"><use href="#i-chev-l"></use></svg></button>
     </div>
   </div>
 </header>
@@ -577,7 +590,7 @@
     <header class="page-head">
       <div>
         <h1 id="newsHead">News</h1>
-        <p class="page-sub">Official word from the admins: closures, schedule changes, and anything pinned.</p>
+        <p class="page-sub">Official word from teachers and admins: closures, schedule changes, and anything pinned.</p>
       </div>
     </header>
 
@@ -587,7 +600,7 @@
         <div class="status-line" id="feedStatus"></div>
       </div>
       <aside class="news-side">
-        <div class="card admin-only" id="announceComposerCard" hidden>
+        <div class="card announce-only" id="announceComposerCard" hidden>
           <div class="card-head"><div><h2>Post an announcement</h2></div></div>
           <div class="composer">
             <textarea id="announceInput" placeholder="What does the class need to know?" aria-label="Announcement"></textarea>

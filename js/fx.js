@@ -139,7 +139,7 @@ function initRipple(){
    feels like a window onto the building rather than a flat picture. Mouse
    and trackpad only; touch screens have nothing to follow. */
 function initDepth(){
-  if (REDUCED || !window.matchMedia("(pointer: fine)").matches) return;
+  if (REDUCED || document.documentElement.classList.contains("lite") || !window.matchMedia("(pointer: fine)").matches) return;
   var bg = document.getElementById("campusBg");
   if (!bg) return;
   onPointer(function(p){
@@ -152,7 +152,7 @@ function initDepth(){
 /* A soft light follows the pointer across whichever card it is over. */
 var SPOT = ".card, .work-card, .note-card, .stat, .person, .post, .announce-item, .rl-block";
 function initSpotlight(){
-  if (REDUCED || !window.matchMedia("(pointer: fine)").matches) return;
+  if (REDUCED || document.documentElement.classList.contains("lite") || !window.matchMedia("(pointer: fine)").matches) return;
   var lit = null;
   onPointer(function(p, e){
     var t = e.target && e.target.closest ? e.target.closest(SPOT) : null;

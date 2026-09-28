@@ -1,6 +1,8 @@
-import { dbErrMsg, fmtWhen, requireDb, saveConfig, toast } from "./backend.js";
+import { BE, canAdmin, dbErrMsg, fmtWhen, requireDb, saveConfig, toast } from "./backend.js";
+import { displayName } from "./profile.js";
 import { state } from "./state.js";
 import { svgIcon } from "./text.js";
+import { canAnnounce, roleBadgeHtml } from "./roles.js";
 
 /* =========================================================
    5. Rendering, Announcements
@@ -44,10 +46,13 @@ function renderAnnouncements(){
   state.announcements.forEach(function(a){
     var item = document.createElement("div");
     item.className = "announce-item" + (a.pinned ? " pinned" : "");
-    var del = state.adminMode ? '<button class="announce-del" data-id="'+a.id+'">Remove</button>' : "";
+    var canDel = canAdmin() || (canAnnounce() && BE.user && a.authorUid === BE.user.id);
+    var del = canDel ? '<button class="announce-del" data-id="'+a.id+'">Remove</button>' : "";
     item.innerHTML =
-      '<div class="announce-meta">'+(a.pinned?'<span class="pin">'+svgIcon("i-pin")+' Pinned</span>':'')+'<span>'+fmtWhen(a.createdAt)+'</span></div>'+
+      '<div class="announce-meta">'+(a.pinned?'<span class="pin">'+svgIcon("i-pin")+' Pinned</span>':'')+'<span>'+fmtWhen(a.createdAt)+'</span>'+
+        (a.authorUid ? '<span class="ann-by">· <b></b> '+roleBadgeHtml(a.authorUid)+'</span>' : '')+'</div>'+
       '<div class="announce-text"></div>'+del;
+    if (a.authorUid) item.querySelector(".ann-by b").textContent = displayName(a.authorUid, a.authorName || "");
     item.querySelector(".announce-text").textContent = a.text || "";
     list.appendChild(item);
   });
@@ -67,7 +72,8 @@ function postAnnouncement(){
   if (!text){ toast("Write something first.", true); return; }
   var pinned = document.getElementById("announcePin").checked;
   db.collection("announcements").add({
-    text: text, pinned: pinned, createdAt: new Date().toISOString()
+    text: text, pinned: pinned, createdAt: new Date().toISOString(),
+    authorUid: BE.user ? BE.user.id : "", authorName: BE.user ? String(BE.user.name || "").slice(0, 40) : ""
   }).then(function(){
     document.getElementById("announceInput").value = "";
     document.getElementById("announcePin").checked = false;
@@ -76,4 +82,5 @@ function postAnnouncement(){
 }
 
 
+window.addEventListener("3cs:roles", function(){ try{ renderAnnouncements(); }catch(e){} });
 export { postAnnouncement, renderAnnouncements, renderGlobalBanner, saveGlobalBanner };

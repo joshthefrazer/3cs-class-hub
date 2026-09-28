@@ -1,5 +1,5 @@
 import {
-  BE, authorFields, canAdmin, dbErrMsg, fmtAgo, meId, mine,
+  BE, authorFields, canAdmin, dbErrMsg, fmtAgo, meId, mine, noteErr,
   requireDb, signedIn, toast, usingFirebase
 } from "./backend.js";
 import { state } from "./state.js";
@@ -123,12 +123,13 @@ function visibleWork(){
   var subj = state.workSubject || "all";
   var hide = state.workHideDone !== false;
   return assignments().filter(function(a){
+    if (!a || typeof a !== "object") return false;
     if (subj !== "all" && a.subject !== subj) return false;
     if (hide && isDone(a)) return false;
     return true;
   }).sort(function(x, y){
     var dx = dueDate(x), dy = dueDate(y);
-    if (!dx && !dy) return (y.createdAt || "").localeCompare(x.createdAt || "");
+    if (!dx && !dy) return String(y.createdAt || "").localeCompare(String(x.createdAt || ""));
     if (!dx) return 1;
     if (!dy) return -1;
     return dx - dy;
@@ -177,6 +178,16 @@ function renderWork(){
   }
   list.innerHTML = "";
 
+  if (!rows.length && state.workError){
+    var eb = emptyState("i-alert", "Work couldn't load on this device", dbErrMsg(state.workError) + (state.workError.code ? " (" + state.workError.code + ")" : ""));
+    var rb = document.createElement("button");
+    rb.className = "btn ghost sm"; rb.type = "button"; rb.textContent = "Try again"; rb.style.marginTop = "10px";
+    rb.addEventListener("click", function(){ location.reload(); });
+    eb.appendChild(rb);
+    list.appendChild(eb);
+    if (status) status.textContent = "";
+    return;
+  }
   if (!rows.length){
     var done = assignments().length && state.workHideDone !== false;
     list.appendChild(emptyState(
@@ -203,7 +214,8 @@ function renderWork(){
     head.className = "work-group" + (bk.tone ? " " + bk.tone : "");
     head.innerHTML = '<span>' + bk.label + '</span><b>' + group.length + '</b>';
     list.appendChild(head);
-    group.forEach(function(a){ list.appendChild(workCard(a, bk)); });
+    // one odd row (typed in by hand, from an old version) must not blank the list
+    group.forEach(function(a){ try{ list.appendChild(workCard(a, bk)); }catch(e){ noteErr("work-card", e); } });
   });
 
   if (status){
@@ -431,9 +443,20 @@ function saveWork(){
   row.source = "manual";
   row.createdAt = new Date().toISOString();
   Object.assign(row, authorFields());
+  var btn = document.getElementById("workSaveBtn");
+  if (btn) btn.disabled = true;
+  /* With the offline cache on, add() only resolves once the server has it;
+     the row already shows locally, so close after a moment either way. */
+  var gone = false;
+  var slow = setTimeout(function(){
+    gone = true;
+    if (btn) btn.disabled = false;
+    closeWorkSheet();
+    toast("Saved on this device. It goes to the class as soon as the connection catches up.");
+  }, 6000);
   BE.db.collection("assignments").add(row)
-    .then(function(){ toast("Posted to the class."); closeWorkSheet(); })
-    .catch(function(err){ toast(dbErrMsg(err), true); });
+    .then(function(){ clearTimeout(slow); if (btn) btn.disabled = false; if (!gone){ toast("Posted to the class."); closeWorkSheet(); } })
+    .catch(function(err){ clearTimeout(slow); if (btn) btn.disabled = false; noteErr("work-save", err); toast(dbErrMsg(err), true); });
 }
 
 function deleteWork(){

@@ -1,4 +1,4 @@
-import { BE, signOutNow, toast, usingFirebase, canAdmin } from "./backend.js";
+import { BE, signOutNow, toast, usingFirebase, canAdmin, hubErrors } from "./backend.js";
 import { closeSheet, esc, openSheet, svgIcon } from "./text.js";
 import { setTheme, themeChoice } from "./theme.js";
 import { openProfileSheet } from "./profile.js";
@@ -9,8 +9,10 @@ import { myListing, setListed } from "./people.js";
 import { openModeration } from "./chat.js";
 import { openSiteEditor } from "./adminpanel.js";
 import { openLauncher } from "./links.js";
-import { setBackgroundMode, bgMode, openGallery } from "./campus.js";
-import { lookHtml, wireLook } from "./layout.js";
+import { setBackgroundMode, bgMode, openGallery, setCustomImage, customImage } from "./campus.js";
+import { compressImage, pickFiles } from "./media.js";
+import { canModerate, canAnnounce, roleBadgeHtml, openMembers } from "./roles.js";
+import { lookHtml, layoutHtml, wireLook, lookHooks } from "./layout.js";
 
 /* =========================================================
    SETTINGS - everything here is a preference for this browser, except
@@ -22,7 +24,8 @@ var DEFAULTS = {
   "3cs_motion":     "system",  // system | reduce
   "3cs_ntf":        "all",     // all | direct | off
   "3cs_ntf_sound":  "off",     // on | off
-  "3cs_enter":      "on"       // on | off  (Enter sends a message)
+  "3cs_enter":      "on",      // on | off  (Enter sends a message)
+  "3cs_fx":         "auto"     // auto | full | lite
 };
 function getPref(k){
   try{ var v = localStorage.getItem(k); return v == null ? DEFAULTS[k] : v; }catch(e){ return DEFAULTS[k]; }
@@ -44,23 +47,38 @@ function toggle(id, on){
   return '<input type="checkbox" class="switch" id="' + id + '"' + (on ? " checked" : "") + '>';
 }
 
-function openSettings(){
+/* Settings is a small app of its own: a list of panes down the side (or
+   across the top on phones), so nothing is more than one tap away. */
+var PANES = [
+  ["look", "i-sparkles", "Look"],
+  ["layout", "i-grid", "Layout"],
+  ["chat", "i-msg", "Chat"],
+  ["welcome", "i-play", "Welcome"],
+  ["account", "i-user", "Account"],
+  ["staff", "i-shield", "Admin"],
+  ["keys", "i-hash", "Shortcuts"],
+  ["fix", "i-alert", "Troubleshoot"]
+];
+var lastPane = "look";
+function openSettings(pane){
   var signedIn = usingFirebase() && !!BE.user;
   var listing = myListing();
-  var box = openSheet(
-    '<div class="sheet-head"><div><h2>Settings</h2><p class="hint">Saved in this browser unless it says otherwise.</p></div>' +
-    '<button class="sheet-close" type="button" aria-label="Close">' + svgIcon("i-close") + '</button></div>' +
-
-    '<section class="set-sec"><h3>Look</h3>' +
-      row("Theme", "System follows your device.", seg("setTheme", themeChoice(), [["system","System"],["light","Light"],["dark","Dark"]])) +
-      row("Motion", "Reduce turns off the bigger animations everywhere.", seg("setMotion", getPref("3cs_motion"), [["system","Full"],["reduce","Reduced"]])) +
-      row("Background", "Photos of the Itz'at campus. Each section can have its own spot, or one photo can change daily.",
-        seg("setBg", bgMode(), [["sections","By section"],["daily","Daily"],["paper","Graph paper"]])) +
-      '<div class="btn-row" style="margin-top:6px"><button class="btn ghost sm" id="setPhotos" type="button">' + svgIcon("i-image") + ' See the campus photos</button></div>' +
-    '</section>' +
-    lookHtml() +
-
-    '<section class="set-sec"><h3>Welcome animation</h3>' +
+  var staff = canAdmin() || canModerate() || canAnnounce();
+  var panes = PANES.filter(function(p){ return p[0] !== "staff" || staff; });
+  var html = {};
+  html.look = lookHtml({ bgMode: bgMode(), customImage: customImage(), themeChoice: themeChoice(), fx: getPref("3cs_fx"), motion: getPref("3cs_motion") });
+  html.layout = layoutHtml();
+  html.chat = '<section class="set-sec"><h3>Chat</h3>' +
+      row("Pop-up notifications", "Small cards at the side when a message arrives while the chat is closed.",
+        '<select id="setNtf" aria-label="Pop-up notifications">' +
+          '<option value="all">Everything</option>' +
+          '<option value="direct">Only chats and @mentions</option>' +
+          '<option value="off">Off</option>' +
+        '</select>') +
+      row("Sound", "A soft blip with each pop-up.", toggle("setSound", getPref("3cs_ntf_sound") === "on")) +
+      row("Enter sends", "Turn off to use Enter for new lines, and Ctrl+Enter to send.", toggle("setEnter", getPref("3cs_enter") === "on")) +
+    '</section>';
+  html.welcome = '<section class="set-sec"><h3>Welcome animation</h3>' +
       row("Play it", "It's about half a minute, and you can always skip it.",
         '<select id="setIntro" aria-label="When to play the welcome animation">' +
           '<option value="daily">First visit each day</option>' +
@@ -71,51 +89,74 @@ function openSettings(){
         '<button class="btn ghost sm" id="setReplay" type="button">' + svgIcon("i-play") + ' Play it now</button>' +
         '<button class="btn ghost sm" id="setNews" type="button">' + svgIcon("i-sparkles") + ' What\'s new</button>' +
       '</div>' +
-    '</section>' +
-
-    '<section class="set-sec"><h3>Chat</h3>' +
-      row("Pop-up notifications", "Small cards at the side when a message arrives while the chat is closed.",
-        '<select id="setNtf" aria-label="Pop-up notifications">' +
-          '<option value="all">Everything</option>' +
-          '<option value="direct">Only chats and @mentions</option>' +
-          '<option value="off">Off</option>' +
-        '</select>') +
-      row("Sound", "A soft blip with each pop-up.", toggle("setSound", getPref("3cs_ntf_sound") === "on")) +
-      row("Enter sends", "Turn off to use Enter for new lines, and Ctrl+Enter to send.", toggle("setEnter", getPref("3cs_enter") === "on")) +
-    '</section>' +
-
-    '<section class="set-sec"><h3>Privacy</h3>' +
+    '</section>';
+  html.account = '<section class="set-sec"><h3>Account</h3>' +
       (signedIn
-        ? row("Show my email in People", "Classmates can see and copy your school email. Turn off to hide it.",
-            toggle("setListed", listing !== false))
-        : '<p class="hint">Sign in to choose whether your email shows in People.</p>') +
-    '</section>' +
-
-    '<section class="set-sec"><h3>Account</h3>' +
-      (signedIn
-        ? '<div class="set-row"><div><b>' + esc(BE.user.name) + (BE.isOwner ? ' <span class="badge priv">Owner</span>' : BE.isAdmin ? ' <span class="badge priv">Admin</span>' : '') + '</b><small>' + esc(BE.user.email) + '</small></div>' +
+        ? '<div class="set-row"><div><b>' + esc(BE.user.name) + ' ' + roleBadgeHtml(BE.user.id) + '</b><small>' + esc(BE.user.email) + '</small></div>' +
           '<div class="btn-row"><button class="btn ghost sm" id="setProfile" type="button">' + svgIcon("i-user") + ' Profile</button>' +
           '<button class="btn ghost sm" id="setOut" type="button">' + svgIcon("i-logout") + ' Sign out</button></div></div>'
         : (usingFirebase()
             ? '<div class="btn-row"><button class="btn" id="setIn" type="button">Sign in</button></div>'
             : '<p class="hint">This copy of the Hub has no accounts.</p>')) +
     '</section>' +
-
-    (canAdmin()
-      ? '<section class="set-sec"><h3>Admin</h3><div class="btn-row">' +
-          '<button class="btn ghost sm" id="setMod" type="button">' + svgIcon("i-shield") + ' Moderation</button>' +
-          '<button class="btn ghost sm" id="setEditor" type="button">' + svgIcon("i-edit") + ' Edit the site</button>' +
-        '</div></section>'
-      : '') +
-
-    '<section class="set-sec"><h3>Keyboard</h3><div class="set-keys">' +
+    '<section class="set-sec"><h3>Privacy</h3>' +
+      (signedIn
+        ? row("Show my email in People", "Classmates can see and copy your school email. Turn off to hide it.",
+            toggle("setListed", listing !== false))
+        : '<p class="hint">Sign in to choose whether your email shows in People.</p>') +
+    '</section>';
+  html.staff = '<section class="set-sec"><h3>' + (canAdmin() ? "Admin" : "Staff") + ' tools</h3><div class="staff-grid">' +
+      (canAdmin() ? '<button class="staff-card" id="setMembers" type="button">' + svgIcon("i-people") + '<b>Members and roles</b><small>Rename people, make teachers and mods</small></button>' : '') +
+      (canModerate() ? '<button class="staff-card" id="setMod" type="button">' + svgIcon("i-shield") + '<b>Moderation</b><small>Pause someone\'s chat access</small></button>' : '') +
+      (canAnnounce() ? '<button class="staff-card" id="setAnnounce" type="button">' + svgIcon("i-megaphone") + '<b>Post news</b><small>Announcements for the class</small></button>' : '') +
+      (canAdmin() ? '<button class="staff-card" id="setEditor" type="button">' + svgIcon("i-edit") + '<b>Edit the site</b><small>Timetable, calendar, bells, banner</small></button>' : '') +
+    '</div></section>';
+  html.fix = fixHtml();
+  html.keys = '<section class="set-sec"><h3>Keyboard shortcuts</h3><div class="set-keys">' +
       '<span><kbd>Ctrl</kbd> <kbd>K</kbd></span><span>Search everything</span>' +
-      '<span><kbd>1</kbd> to <kbd>7</kbd></span><span>Jump between sections</span>' +
+      '<span><kbd>1</kbd> to <kbd>8</kbd></span><span>Jump between sections</span>' +
+      '<span><kbd>[</kbd></span><span>Shrink or widen the sidebar</span>' +
       '<span><kbd>/</kbd></span><span>Search</span>' +
+      '<span><kbd>Alt</kbd> <kbd>←</kbd></span><span>Back to the section you were on</span>' +
       '<span><kbd>Esc</kbd></span><span>Close whatever is open</span>' +
-    '</div></section>'
+    '</div></section>';
+
+  var box = openSheet(
+    '<div class="sheet-head"><div><h2>Settings</h2><p class="hint">Saved to your account when you\'re signed in.</p></div>' +
+    '<button class="sheet-close" type="button" aria-label="Close">' + svgIcon("i-close") + '</button></div>' +
+    '<div class="set-wrap"><nav class="set-nav" role="tablist" aria-label="Settings">' + panes.map(function(p){
+      return '<button type="button" role="tab" data-pane="' + p[0] + '">' + svgIcon(p[1]) + '<span>' + p[2] + '</span></button>';
+    }).join("") + '</nav><div class="set-panes">' + panes.map(function(p){
+      return '<div class="set-pane" role="tabpanel" data-pane="' + p[0] + '" hidden>' + html[p[0]] + '</div>';
+    }).join("") + '</div></div>'
   );
-  box.classList.add("wide");
+  box.classList.add("wide", "settings-box");
+  function show(name){
+    if (!box.querySelector('.set-pane[data-pane="' + name + '"]')) name = "look";
+    lastPane = name;
+    box.querySelectorAll(".set-nav button").forEach(function(b){ var on = b.dataset.pane === name; b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on)); });
+    box.querySelectorAll(".set-pane").forEach(function(p){ p.hidden = p.dataset.pane !== name; });
+    var onBtn = box.querySelector(".set-nav button.on");
+    if (onBtn && onBtn.scrollIntoView) onBtn.scrollIntoView({ block: "nearest", inline: "nearest" });
+    var panesEl = box.querySelector(".set-panes"); if (panesEl) panesEl.scrollTop = 0;
+  }
+  box.querySelectorAll(".set-nav button").forEach(function(b){ b.addEventListener("click", function(){ show(b.dataset.pane); }); });
+  show(typeof pane === "string" ? pane : lastPane);
+
+  lookHooks({
+    setTheme: function(m){ setTheme(m); },
+    setBg: function(v){ setBackgroundMode(v); },
+    pickBg: function(done){
+      pickFiles("image/*").then(function(files){
+        if (!files || !files[0]) return;
+        toast("Setting your picture…");
+        compressImage(files[0], 1920, 950000).then(function(r){
+          return setCustomImage(r.data).then(function(){ done(r.data); toast("Your picture is the background now."); });
+        }).catch(function(e){ toast(e.message || "Couldn't use that picture.", true); });
+      });
+    }
+  });
+  wireLook(box, closeSheet);
 
   box.querySelectorAll('input[name="setTheme"]').forEach(function(r){
     r.addEventListener("change", function(){ if (r.checked) setTheme(r.value); });
@@ -128,15 +169,16 @@ function openSettings(){
       toast(r.value === "reduce" ? "Animations turned down." : "Full animations back on.");
     });
   });
-  box.querySelectorAll('input[name="setBg"]').forEach(function(r){
+  box.querySelectorAll('input[name="setFx"]').forEach(function(r){
     r.addEventListener("change", function(){
       if (!r.checked) return;
-      setBackgroundMode(r.value);
-      toast(r.value === "paper" ? "Back to graph paper." : r.value === "daily" ? "A new campus photo every day." : "Each section has its own spot on campus.");
+      setPref("3cs_fx", r.value);
+      var weak = (navigator.deviceMemory && navigator.deviceMemory <= 4) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2);
+      document.documentElement.classList.toggle("lite", r.value === "lite" || (r.value === "auto" && !!weak));
+      toast(r.value === "lite" ? "Light effects on. Things should feel snappier." : r.value === "full" ? "All the effects are on." : "Effects will match this computer.");
     });
   });
-  box.querySelector("#setPhotos").addEventListener("click", function(){ closeSheet(); openGallery(0); });
-  wireLook(box, closeSheet);
+  var ph = box.querySelector("#setPhotos"); if (ph) ph.addEventListener("click", function(){ closeSheet(); openGallery(0); });
   var intro = box.querySelector("#setIntro");
   intro.value = getPref("3cs_intro_mode");
   intro.addEventListener("change", function(){
@@ -160,16 +202,64 @@ function openSettings(){
       toast(lst.checked ? "Your email shows in People again." : "Your email is hidden from People.");
     }).catch(function(){ lst.checked = !lst.checked; toast("Couldn't change that. Try again.", true); });
   });
-  var pb = box.querySelector("#setProfile");
-  if (pb) pb.addEventListener("click", function(){ closeSheet(); openProfileSheet(); });
-  var ob = box.querySelector("#setOut");
-  if (ob) ob.addEventListener("click", function(){ closeSheet(); signOutNow(); });
-  var ib = box.querySelector("#setIn");
-  if (ib) ib.addEventListener("click", function(){ closeSheet(); openAuthSheet(); });
-  var mb = box.querySelector("#setMod");
-  if (mb) mb.addEventListener("click", function(){ closeSheet(); openModeration(); });
-  var eb = box.querySelector("#setEditor");
-  if (eb) eb.addEventListener("click", function(){ closeSheet(); openSiteEditor(); });
+  function on(id, fn){ var e = box.querySelector("#" + id); if (e) e.addEventListener("click", fn); }
+  on("setCopyReport", function(){
+    var txt = report();
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function(){ toast("Report copied. Paste it in Feedback or send it to an admin."); })
+      .catch(function(){ window.prompt("Copy this report:", txt); });
+  });
+  on("setClearCache", function(){
+    toast("Clearing this device's copy of the Hub…");
+    var db = BE.db;
+    var done = function(){ try{ sessionStorage.clear(); }catch(e){} location.reload(); };
+    if (db && db.terminate && db.clearPersistence){
+      db.terminate().then(function(){ return db.clearPersistence(); }).then(done, done);
+    } else done();
+  });
+  on("setProfile", function(){ closeSheet(); openProfileSheet(); });
+  on("setOut", function(){ closeSheet(); signOutNow(); });
+  on("setIn", function(){ closeSheet(); openAuthSheet(); });
+  on("setMod", function(){ closeSheet(); openModeration(); });
+  on("setEditor", function(){ closeSheet(); openSiteEditor(); });
+  on("setMembers", function(){ closeSheet(); openMembers(); });
+  on("setAnnounce", function(){
+    closeSheet();
+    var t = document.querySelector('nav.tabs button[data-tab="announcements"]'); if (t) t.click();
+    setTimeout(function(){ var i = document.getElementById("annInput") || document.querySelector("#tab-announcements textarea"); if (i) i.focus(); }, 400);
+  });
+}
+
+/* Troubleshoot: what this device knows about itself, in plain words, plus
+   the two fixes that solve most "it works for everyone but me" problems. */
+function envFacts(){
+  var ua = navigator.userAgent, b = "Browser";
+  var m = /Edg\/(\d+)/.exec(ua) || /OPR\/(\d+)/.exec(ua) || /Chrome\/(\d+)/.exec(ua) || /Firefox\/(\d+)/.exec(ua) || /Version\/(\d+).*Safari/.exec(ua);
+  if (/Edg\//.test(ua)) b = "Edge"; else if (/OPR\//.test(ua)) b = "Opera"; else if (/Chrome\//.test(ua)) b = "Chrome"; else if (/Firefox\//.test(ua)) b = "Firefox"; else if (/Safari/.test(ua)) b = "Safari";
+  return [
+    ["Hub version", String(window.HUB_VERSION || "?")],
+    ["Browser", b + (m ? " " + m[1] : "") + (/CrOS/.test(ua) ? " on a Chromebook" : /Windows/.test(ua) ? " on Windows" : /Mac OS/.test(ua) ? " on a Mac" : /Android/.test(ua) ? " on Android" : /iPhone|iPad/.test(ua) ? " on iOS" : "")],
+    ["Signed in", usingFirebase() ? (BE.user ? "Yes" : "No") : "No accounts in this copy"],
+    ["Connection", navigator.onLine === false ? "Offline" : "Online"],
+    ["Screen", window.innerWidth + " × " + window.innerHeight + (window.devicePixelRatio && window.devicePixelRatio !== 1 ? " at " + Math.round(window.devicePixelRatio * 100) + "% scale" : "")],
+    ["Problems seen", hubErrors.length ? String(hubErrors.length) : "None"]
+  ];
+}
+function fixHtml(){
+  var errs = hubErrors.slice(-6).reverse();
+  return '<section class="set-sec"><h3>This device</h3><div class="fix-facts">' +
+      envFacts().map(function(f){ return '<span>' + esc(f[0]) + '</span><b>' + esc(f[1]) + '</b>'; }).join("") + '</div>' +
+      (errs.length ? '<div class="fix-errs">' + errs.map(function(e){
+        return '<div><b>' + esc(e.where) + (e.code ? ' · ' + esc(e.code) : '') + '</b><small>' + esc(e.msg) + '</small></div>';
+      }).join("") + '</div>' : '<p class="hint" style="margin-top:10px">Nothing has gone wrong on this device since the page loaded.</p>') +
+    '</section>' +
+    '<section class="set-sec"><h3>Fixes</h3>' +
+      row("Something missing or out of date?", "Clears this device\'s saved copy of the class data and loads it fresh. Your settings and account stay.", '<button class="btn ghost sm" id="setClearCache" type="button">Refresh data</button>') +
+      row("Tell an admin", "Copies the details above so whoever fixes it can see what happened.", '<button class="btn ghost sm" id="setCopyReport" type="button">Copy report</button>') +
+    '</section>';
+}
+function report(){
+  return "3CS Hub report\n" + envFacts().map(function(f){ return f[0] + ": " + f[1]; }).join("\n") +
+    "\nPage: " + location.hash + "\n" + hubErrors.slice(-10).map(function(e){ return e.at + " " + e.where + " " + e.code + " " + e.msg; }).join("\n");
 }
 
 /* The phone's "More" button: the sections that don't fit in the bar. */
