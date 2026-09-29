@@ -20,11 +20,16 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="assets/itzat-glyph.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="3CS Hub">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script>
   /* Runs before first paint: picks the theme so there is no flash of the
      wrong one, applies the motion setting, and decides whether the welcome
      animation plays. Keep HUB_VERSION in step with js/updates.js. */
-  window.HUB_VERSION = "3.2";
+  window.HUB_VERSION = "3.3";
   (function(){
     var d = document.documentElement;
     function get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
@@ -47,8 +52,10 @@
     setTimeout(function(){ d.classList.add("booted"); }, 5000);
     try{
       var s = location.search, h = location.hash || "";
-      var force = /[?&]intro=1/.test(s), never = /[?&]intro=0/.test(s);
-      var mode = get("3cs_intro_mode") || "daily";
+      var force = /[?&]intro=1/.test(s), never = /[?&]intro=0/.test(s) || /[?&](do|share_\w+|desktop_auth)=/.test(s);
+      /* as an installed app it opens straight to work: the intro only plays after an update */
+      var isApp = !!window.hubDesktop || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+      var mode = get("3cs_intro_mode") || (isApp ? "updates" : "daily");
       var play = false;
       if (force) play = true;
       else if (never || mode === "off" || h.indexOf("#note=") === 0) play = false;
@@ -67,12 +74,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Caveat:wght@600;700&family=Figtree:wght@400..800&family=JetBrains+Mono:wght@400..600&display=swap" onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Caveat:wght@600;700&family=Figtree:wght@400..800&family=JetBrains+Mono:wght@400..600&display=swap"></noscript>
-<link rel="stylesheet" href="styles/theme.css?v=3.2">
-<link rel="stylesheet" href="styles/layout.css?v=3.2">
-<link rel="stylesheet" href="styles/components.css?v=3.2">
-<link rel="stylesheet" href="styles/features.css?v=3.2">
-<link rel="stylesheet" href="styles/social.css?v=3.2">
-<link rel="stylesheet" href="styles/intro.css?v=3.2">
+<link rel="stylesheet" href="styles/theme.css?v=3.3">
+<link rel="stylesheet" href="styles/layout.css?v=3.3">
+<link rel="stylesheet" href="styles/components.css?v=3.3">
+<link rel="stylesheet" href="styles/features.css?v=3.3">
+<link rel="stylesheet" href="styles/social.css?v=3.3">
+<link rel="stylesheet" href="styles/intro.css?v=3.3">
 <link rel="preload" as="image" href="assets/campus/bg-front.webp" type="image/webp">
 <link rel="modulepreload" href="js/main.js">
 <link rel="modulepreload" href="js/orbit.js">
@@ -81,6 +88,7 @@
 <link rel="modulepreload" href="js/state.js">
 <link rel="modulepreload" href="js/adminpanel.js">
 <link rel="modulepreload" href="js/ann.js">
+<link rel="modulepreload" href="js/app.js">
 <link rel="modulepreload" href="js/auth.js">
 <link rel="modulepreload" href="js/cal.js">
 <link rel="modulepreload" href="js/campus.js">
@@ -336,6 +344,7 @@
       <button type="button" data-tab="people"><svg class="ic" aria-hidden="true"><use href="#i-people"></use></svg><span class="lbl">People</span></button>
       <button type="button" data-tab="voice"><svg class="ic" aria-hidden="true"><use href="#i-poll"></use></svg><span class="lbl">Feedback</span><span class="tab-count" id="tabCountVoice" hidden></span></button>
     </nav>
+    <button class="side-install js-install" type="button" hidden><svg class="ic" aria-hidden="true"><use href="#i-arrow-down"></use></svg><span class="lbl">Install app</span></button>
 
     <div class="hdr-right">
       <button class="icon-btn hdr-search" id="searchBtn" type="button" aria-label="Search everything"><svg class="ic" aria-hidden="true"><use href="#i-search"></use></svg><span class="hs-lbl">Search</span><kbd>Ctrl K</kbd></button>
@@ -449,7 +458,7 @@
 
       <div class="card" data-block="bells">
         <div class="card-head"><div><h2>Bell times</h2></div></div>
-        <div class="bells" id="bellSchedules"></div>
+        <div class="bells" id="bellSchedules" tabindex="0" role="region" aria-label="Bell schedules"></div>
       </div>
 
       <div class="card" data-block="codes">
@@ -720,7 +729,7 @@
 </nav>
 
 <div id="toast" role="status" aria-live="polite"></div>
-<div class="notify-stack" id="notifyStack" aria-live="polite" aria-label="New messages"></div>
+<div class="notify-stack" id="notifyStack" role="region" aria-live="polite" aria-label="New messages"></div>
 
 <!-- ================================= CHAT ================================ -->
 <button class="chat-fab" id="chatFab" type="button" aria-label="Open messages" aria-expanded="false" aria-controls="chatPanel">

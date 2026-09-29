@@ -684,5 +684,5 @@ function renderLiveConfig(){
 export {
   renderLiveConfig, REDUCED, TABS, boot, fmtLeft, initKeyboard, minsNow, nextBreak, nextHalfDay,
   nextSchoolDay, parseClock, renderDayBar, renderHero, renderLineup, renderNextDay, renderNowStrip,
-  sessionRanges, setHeroWord, tickNow, todayInfo, updateTabInk, warpBusy, warpTo
+  sessionRanges, setHeroWord, tickNow, todayInfo, updateTabInk, warpBusy, warpTo, whereNow
 };

@@ -2,7 +2,7 @@ import { state } from "./state.js";
 import { esc, svgIcon } from "./text.js";
 import { liveCal, liveSched, liveLegend, liveSessions } from "./live.js";
 import { assignments, duePhrase, isDone, openWorkSheet } from "./work.js";
-import { canAdmin, signedIn, usingFirebase, BE, signIn } from "./backend.js";
+import { canAdmin, signedIn, usingFirebase, BE, signIn, wantSection } from "./backend.js";
 import { openSiteEditor } from "./adminpanel.js";
 import { openAuthSheet } from "./auth.js";
 
@@ -248,6 +248,8 @@ function choose(i){
 }
 
 function show(){
+  // search covers notes and help posts, so open those listeners now
+  try{ wantSection("notebook"); wantSection("help"); }catch(e){}
   build();
   var w = document.getElementById("palette");
   w.hidden = false;

@@ -22,6 +22,9 @@ Live at https://joshthefrazer.github.io/3cs-class-hub/
 - **Polls & feedback**: admins run polls (results can't be faked; the rules check every vote), and anyone can post ideas, report problems or ask for changes, with upvotes. Anonymous posts hide the name from classmates but not from admins.
 - **Getting around**: on computers a sidebar holds every section, grouped into School and Class, and shrinks to icons (the arrow at the bottom, or the `[` key). Every section has its own address (`#work`, `#notes`, `#news`...), so links and the back button work. Phones keep the bottom bar.
 - **Make it yours**: eight themes, painted backgrounds or your own photo, accent colour, text size, spacing and glass cards; move, collapse or hide any card on Today, hide sections from the menu, and dock a "right now" pill on every page. Saved to your account.
+- **The app**: the Hub installs from the browser on phones, Chromebooks and computers (`manifest.webmanifest`, `sw.js`). Installed, it opens in its own window, keeps the timetable working offline, shows the unread count on its icon, has shortcuts (Today, Work, Add assignment, Chat) and appears in the Share menu so links can go straight into chat, a note or an assignment. `sw.js` always loads the site fresh when online and only uses its saved copy offline, so it never needs editing when the site changes.
+- **Desktop app**: `desktop/` is an Electron app for Windows that shows the live Hub with a tray countdown, reminders while closed, a taskbar badge and Ctrl+Alt+A to add work. See `desktop/README.md`; the "Desktop app" GitHub Action builds and publishes the installer.
+- **Reminders**: a heads-up before each class and a daily homework check (Settings > Reminders), plus system notifications for messages while you're in another window.
 - **Settings**: tabs for Look, Layout, Chat, Welcome, Account, staff tools, Shortcuts and Troubleshoot. Troubleshoot shows the device's browser, sign-in state and any errors, can copy a report, and can clear the device's cached data.
 - **Welcome animation**: what's new, the credits, and the welcome. It plays on the first visit each day by default.
 
@@ -29,7 +32,9 @@ Live at https://joshthefrazer.github.io/3cs-class-hub/
 
 Plain HTML, CSS and JavaScript modules. No build step. Data lives in Firebase (Firestore and Authentication) on the free plan. Pictures are shrunk in the browser and stored as small documents, because the free plan has no file storage.
 
-`firestore.rules` is the real security boundary. It has to be published in the Firebase Console (Firestore Database, Rules, Publish) whenever it changes.
+`firestore.rules` is the real security boundary. It has to be published in the Firebase Console (Firestore Database, Rules, Publish) whenever it changes. Owner, admin and listed emails only count once the address is verified (Google sign-in always is; password accounts confirm by email link).
+
+Database reads are kept low on purpose: Notes, Help and Feedback only start listening the first time someone opens them, and "active now" is written at most every 20 minutes while someone is actually using the page.
 
 ## Admins
 

@@ -49,6 +49,27 @@ function noteErr(where, err){
 }
 window.addEventListener("error", function(ev){ if (ev && ev.message) noteErr("page", { message: ev.message + (ev.filename ? " @ " + ev.filename.split("/").pop() + ":" + ev.lineno : "") }); });
 window.addEventListener("unhandledrejection", function(ev){ var r = ev && ev.reason; noteErr("promise", r); });
+
+/* Sections that aren't on Today (Notes, Help, Feedback) only open their
+   database listeners the first time someone actually visits them. A student
+   who opens the Hub to check their next class then costs a handful of reads
+   instead of every note and post in the class, which keeps the free plan's
+   50,000 reads a day a long way off. Once opened, a section stays live. */
+var lazyFns = {}, lazyOn = {}, lazyWanted = {};
+try{ if (String(location.hash).indexOf("#note=") === 0) lazyWanted.notebook = true; }catch(e){}
+function lazyStream(key, fn){
+  lazyFns[key] = fn;
+  if (lazyWanted[key]) runLazy(key);
+}
+function runLazy(key){
+  if (lazyOn[key] || !lazyFns[key]) return;
+  lazyOn[key] = true;
+  try{ lazyFns[key](); }catch(e){ noteErr("open-" + key, e); }
+}
+function wantSection(key){
+  lazyWanted[key] = true;
+  runLazy(key);
+}
 function signedIn(){ return !usingFirebase() || !!BE.user; }
 
 /* Soft identity: only used by the artifact driver, which cannot verify
@@ -280,7 +301,8 @@ function startFirebase(){
           id: u.uid,
           name: u.displayName || u.email || "Someone",
           email: (u.email || "").toLowerCase(),
-          photo: u.photoURL || ""
+          photo: u.photoURL || "",
+          verified: !!u.emailVerified
         };
         checkAdmin().then(function(){
           state.dbReady = true;
@@ -323,6 +345,8 @@ function checkAdmin(){
   BE.isAdmin = false;
   BE.isOwner = false;
   if (!BE.user) return Promise.resolve();
+  // the rules ignore an address that hasn't been proven, so the page does too
+  if (!BE.user.verified) return Promise.resolve();
   if (isOwnerEmail(BE.user.email)){ BE.isAdmin = true; BE.isOwner = true; }
   return BE.db.doc("config/admins").get().then(function(s){
     var list = (s.exists && s.data() && s.data().emails) || [];
@@ -334,6 +358,19 @@ function checkAdmin(){
 
 function signIn(){
   if (!BE.auth) return;
+  /* Google refuses to sign in inside desktop app windows, so the desktop
+     app opens the Hub in your normal browser for that one step and hands
+     the result back (see desktop/main.js and "desktop_auth" in js/app.js). */
+  var D = window.hubDesktop;
+  if (D && D.googleSignIn){
+    toast("Finish signing in in your browser, then come back here.");
+    D.googleSignIn().then(function(t){
+      if (!t || !t.idToken) throw new Error("No sign-in came back.");
+      return BE.auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(t.idToken, t.accessToken || null));
+    }).then(function(){ toast("Signed in."); })
+      .catch(function(err){ toast("Couldn't sign in: " + (err && err.message ? err.message : "try again"), true); });
+    return;
+  }
   var p = new firebase.auth.GoogleAuthProvider();
   p.setCustomParameters({ prompt: "select_account" });
   BE.auth.signInWithPopup(p).catch(function(err){
@@ -389,6 +426,7 @@ function startStreams(){
   var db = BE.db;
   if (!db) return;
   stopStreams();
+  lazyFns = {}; lazyOn = {};
 
   streams.push(db.doc("config/site").onSnapshot(function(snap){
       var data = snap.exists ? snap.data() : {};
@@ -443,6 +481,7 @@ function startStreams(){
       document.getElementById("feedStatus").textContent = "Live feed unavailable: " + dbErrMsg(err);
     }));
 
+  lazyStream("notebook", function(){
   /* Link-only notes are excluded server-side by the rules, so the browse
      query asks only for public ones. Your own link-only notes come back
      through the private/authored stream below. */
@@ -464,9 +503,9 @@ function startStreams(){
       renderNotebook();
     }, function(err){ state.notesLoaded = true; state.notesError = noteErr("notes", err); renderNotebook(); }));
 
-  /* Notes you wrote, whatever their visibility — so link-only ones you
-     created stay findable from the device that made them. */
   if (usingFirebase() && BE.user){
+    /* Notes you wrote, whatever their visibility, so link-only ones you
+       created stay findable from the device that made them. */
     streams.push(db.collection("notebook").where("authorUid","==",BE.user.id).limit(200)
       .onSnapshot(function(qs){
         var items = [];
@@ -478,8 +517,8 @@ function startStreams(){
         renderNotebook();
       }, function(){}));
 
-    /* Private notes now live server-side under your own uid, so they
-       follow you between devices and nobody else can read them. */
+    /* Private notes live server-side under your own uid, so they follow you
+       between devices and nobody else can read them. */
     streams.push(db.collection("users").doc(BE.user.id).collection("private")
       .orderBy("updatedAt","desc").limit(200)
       .onSnapshot(function(qs){
@@ -488,7 +527,10 @@ function startStreams(){
         state.privNotes = items;
         renderNotebook();
       }, function(){}));
+  }
+  });
 
+  if (usingFirebase() && BE.user){
     /* Which assignments YOU have finished. Under your own uid, so the rules
        make it unreadable to everyone else - the class sees the work, never
        who is behind on it. */
@@ -535,7 +577,8 @@ function startStreams(){
     }catch(e){}
   });
 
-  streams.push(db.collection("help").orderBy("createdAt","desc").limit(200).onSnapshot(function(qs){
+  lazyStream("help", function(){
+    streams.push(db.collection("help").orderBy("createdAt","desc").limit(200).onSnapshot(function(qs){
       var items = [];
       qs.docs.forEach(function(d){
         items.push(Object.assign({id:d.id}, d.data()));
@@ -544,7 +587,10 @@ function startStreams(){
       state.posts = items;
       state.postsLoaded = true;
       renderHelp();
-    }, function(){ state.postsLoaded = true; renderHelp(); }));
+    }, function(err){ noteErr("help", err); state.postsLoaded = true; renderHelp(); }));
+  });
+  // whatever section is on screen right now counts as visited
+  try{ if (state.tab) wantSection(state.tab); }catch(e){}
 }
 
 function renderAllFallback(){
@@ -559,4 +605,4 @@ function renderAllFallback(){
 }
 
 
-export { isOwnerEmail, registerStream, noteErr, hubErrors, BE, FB_VERSION, ME, authorFields, canAdmin, checkAdmin, dbErrMsg, fmtAgo, fmtWhen, initDb, initFirebase, loadFirebaseSdk, meId, mergeField, mine, myName, paintAuth, renderAllFallback, requireDb, saveConfig, setMyName, showUnconfigured, signIn, signOutNow, signedIn, startFirebase, startStreams, stopStreams, streams, toast, toastTimer, usingFirebase };
+export { isOwnerEmail, registerStream, noteErr, hubErrors, lazyStream, wantSection, BE, FB_VERSION, ME, authorFields, canAdmin, checkAdmin, dbErrMsg, fmtAgo, fmtWhen, initDb, initFirebase, loadFirebaseSdk, meId, mergeField, mine, myName, paintAuth, renderAllFallback, requireDb, saveConfig, setMyName, showUnconfigured, signIn, signOutNow, signedIn, startFirebase, startStreams, stopStreams, streams, toast, toastTimer, usingFirebase };

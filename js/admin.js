@@ -1,5 +1,5 @@
 import { postAnnouncement, renderAnnouncements, renderGlobalBanner, saveGlobalBanner } from "./ann.js";
-import { BE, toast, usingFirebase } from "./backend.js";
+import { BE, toast, usingFirebase, wantSection } from "./backend.js";
 import { calCursor, setCalCursor, renderCalendar } from "./cal.js";
 import { MONTHS } from "./data.js";
 import { postHelp, renderHelp } from "./help.js";
@@ -90,6 +90,7 @@ function checkNoteHash(){
 
 function setTab(name){
   state.tab = name;
+  try{ wantSection(name); }catch(e){}
   document.querySelectorAll("nav.tabs button, #bottomNav button[data-tab]").forEach(function(b){
     var on = b.getAttribute("data-tab") === name;
     b.classList.toggle("active", on);

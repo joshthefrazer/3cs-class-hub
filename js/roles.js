@@ -29,7 +29,7 @@ var subs = [];
 function emailOf(uid){
   var d = state.directory && state.directory[uid];
   if (d && d.email) return String(d.email).toLowerCase();
-  if (BE.user && BE.user.id === uid) return String(BE.user.email || "").toLowerCase();
+  if (BE.user && BE.user.id === uid) return BE.user.verified === false ? "" : String(BE.user.email || "").toLowerCase();
   return "";
 }
 function roleOf(uid){

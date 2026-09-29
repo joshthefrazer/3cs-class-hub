@@ -153,18 +153,29 @@ function setBackgroundMode(mode){
   applyBackground();
 }
 
-/* warm the next few so switching sections is instant */
+/* Warm the other sections' photos so switching is instant, but only once
+   the page and the database are settled, one photo at a time, and never on
+   a slow or data-saving connection (there each photo loads when its section
+   is opened). That keeps about half a megabyte out of the first load. */
 function preloadRest(){
-  var go = function(){
-    Object.keys(BY_SECTION).forEach(function(k){
-      var url = bgSrc(BY_SECTION[k]);
-      if (loading[url]) return;
-      var i = new Image();
-      i.onload = function(){ loading[url] = true; };
-      i.src = url;
-    });
-  };
-  if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 4000 }); else setTimeout(go, 2500);
+  var c = navigator.connection || {};
+  if (c.saveData || /(^|-)2g|3g/.test(c.effectiveType || "") || document.documentElement.classList.contains("lite")) return;
+  var urls = Object.keys(BY_SECTION).map(function(k){ return bgSrc(BY_SECTION[k]); })
+    .filter(function(u, i, a){ return a.indexOf(u) === i; });
+  function next(){
+    var url = urls.shift();
+    if (!url) return;
+    if (loading[url]){ next(); return; }
+    var i = new Image();
+    i.onload = i.onerror = function(){ loading[url] = true; setTimeout(next, 300); };
+    i.src = url;
+  }
+  function start(){
+    setTimeout(function(){
+      if ("requestIdleCallback" in window) requestIdleCallback(next, { timeout: 5000 }); else next();
+    }, 6000);
+  }
+  if (document.readyState === "complete") start(); else window.addEventListener("load", start, { once: true });
 }
 
 function initBackground(){

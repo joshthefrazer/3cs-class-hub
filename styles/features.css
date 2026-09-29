@@ -229,10 +229,12 @@ button.stat:hover{ transform: translateY(-2px); box-shadow: var(--sh-2); border-
 }
 @keyframes blockIn{ from{ opacity: 0; transform: translateY(10px) scale(.97); } }
 .rl-block:hover{ transform: translateY(-3px); box-shadow: var(--sh-2); z-index: 2; }
-.rl-block .rb-t{ font-family: var(--mono); font-size: .72rem; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rl-block .rb-t{ font-family: var(--mono); font-size: .72rem; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rl-block .rb-c{ font-family: var(--display); font-weight: 800; font-size: 1.28rem; letter-spacing: -.02em; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rl-block .rb-m{ font-size: .76rem; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rl-block.past{ opacity: .52; }
+/* finished sessions step back in colour, not in legibility */
+.rl-block.past{ opacity: .85; filter: saturate(.35); }
+.rl-block.past .rb-t, .rl-block.past .rb-m{ color: var(--ink-2); }
 .rl-block.past .rb-c{ text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: color-mix(in srgb, var(--ink) 35%, transparent); }
 .rl-block.now{
   background: var(--now-soft);
@@ -376,8 +378,8 @@ button.stat:hover{ transform: translateY(-2px); box-shadow: var(--sh-2); border-
   text-align: center;
 }
 .dd b{ font-family: var(--display); font-size: 1.3rem; line-height: 1.35; font-weight: 800; }
-.due-row.hot .dd span{ background: var(--now); color: #fff; }
-.due-row.bad .dd span{ background: var(--bad); color: #fff; }
+.due-row.hot .dd span{ background: color-mix(in srgb, var(--now) 64%, #000); color: #fff; }
+.due-row.bad .dd span{ background: color-mix(in srgb, var(--bad) 72%, #000); color: #fff; }
 .dt{ min-width: 0; flex: 1; }
 .dt strong{ display: block; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dt small{ display: block; font-size: .8rem; color: var(--ink-3); }
@@ -394,7 +396,7 @@ button.stat:hover{ transform: translateY(-2px); box-shadow: var(--sh-2); border-
 @keyframes peekIn{ from{ opacity: 0; transform: translateY(6px); } }
 .peek-row .pr-b{ min-width: 0; flex: 1; }
 .peek-row .pr-n{ display: flex; gap: 6px; align-items: baseline; font-size: .82rem; font-weight: 750; }
-.peek-row .pr-n time{ font-weight: 500; color: var(--ink-4); font-size: .74rem; }
+.peek-row .pr-n time{ font-weight: 500; color: var(--ink-3); font-size: .74rem; }
 .peek-row .pr-t{ font-size: .88rem; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .peek-empty{ color: var(--ink-3); font-size: .9rem; padding: 10px 0; }
 .peek-compose{ display: flex; gap: 8px; margin-top: 14px; }
@@ -499,7 +501,8 @@ table.sched td{
   overflow: hidden;
 }
 table.sched td:not(.daycol)::before{ content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--sc, var(--brand)); opacity: .8; }
-table.sched td.empty{ background: transparent; border: 1px dashed var(--line); }
+table.sched td.empty{ background: transparent; border: 1px dashed var(--line-strong); }
+table.sched td.empty::after{ content: "Free"; display: block; font-size: .72rem; font-weight: 600; color: var(--ink-4); letter-spacing: .02em; }
 table.sched td.empty::before{ display: none; }
 table.sched td.daycol{
   vertical-align: middle;
@@ -510,7 +513,7 @@ table.sched td.daycol{
   padding-left: 4px;
 }
 table.sched td .code{ font-weight: 800; font-size: .92rem; }
-table.sched td .rt{ font-size: .72rem; color: var(--ink-3); white-space: nowrap; }
+table.sched td .rt{ font-size: .72rem; color: var(--ink-2); white-space: nowrap; }
 table.sched tr.today td{ box-shadow: inset 0 0 0 1.5px var(--now); }
 table.sched tr.today td.daycol{ box-shadow: none; }
 /* the session happening right now, in the weekly grid */
@@ -556,10 +559,10 @@ table.sched tr.today td.daycol span{
   font-weight: 800;
   font-size: .8rem;
   background: color-mix(in srgb, var(--sc, var(--brand)) 14%, var(--surface));
-  color: color-mix(in srgb, var(--sc, var(--brand)) 75%, var(--ink));
+  color: color-mix(in srgb, var(--sc, var(--brand)) 55%, var(--ink));
 }
 .legend-item .def{ font-size: .86rem; color: var(--ink-2); }
-.legend-item .def.placeholder{ color: var(--ink-4); font-style: italic; }
+.legend-item .def.placeholder{ color: var(--ink-3); font-style: italic; }
 .legend-item input{ min-height: 36px !important; padding: 6px 10px !important; font-size: .86rem !important; }
 
 /* ============================= CALENDAR ============================ */
@@ -675,7 +678,7 @@ table.sched tr.today td.daycol span{
   font-size: .72rem;
   font-weight: 800;
   background: color-mix(in srgb, var(--sc, var(--brand)) 14%, var(--surface));
-  color: color-mix(in srgb, var(--sc, var(--brand)) 78%, var(--ink));
+  color: color-mix(in srgb, var(--sc, var(--brand)) 60%, var(--ink));
 }
 .work-detail{ margin: 6px 0 0; font-size: .9rem; color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
 .work-meta{ display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: .84rem; color: var(--ink-3); }
@@ -883,7 +886,7 @@ table.sched tr.today td.daycol span{
 .person-top .avatar{ --av: 52px; }
 .person-id{ min-width: 0; flex: 1; }
 .person-id b{ display: flex; align-items: center; gap: 6px; font-size: 1.02rem; font-weight: 750; }
-.person-id .you{ font-size: .68rem; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: var(--surface-3); color: var(--ink-3); }
+.person-id .you{ font-size: .68rem; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: var(--surface-3); color: var(--ink-2); }
 .person-id .adm{ font-size: .68rem; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: var(--brand-soft); color: var(--brand-ink); }
 .person-id small{ display: block; font-size: .78rem; color: var(--ink-3); }
 .person-mail{
@@ -937,7 +940,7 @@ table.sched tr.today td.daycol span{
 html[data-density="compact"] #tab-schedule.active{ gap: 12px; }
 .blk-off{ display: none !important; }
 .bento.blk-empty{ display: none; }
-.th-custom{ margin-left: auto; font-size: .82rem; opacity: .75; }
+.th-custom{ margin-left: auto; font-size: .82rem; color: var(--ink-2); }
 .th-custom:hover{ opacity: 1; }
 
 /* the little collapse / hide buttons in a card's corner */
@@ -1048,41 +1051,48 @@ body.customizing .bento > .blk-bar{ position: absolute; top: 0; left: 0; right: 
 .custom-bar .btn:not(.ghost){ background: var(--surface); color: var(--ink); box-shadow: none; }
 @media (max-width: 600px){ .cb-t small{ display: none; } }
 
-/* the dock: what's on right now, on every page but Today */
+/* the dock: what's on right now, on every page but Today. It sits in the
+   menu (sidebar foot on computers, top bar on phones), never over content. */
 .now-dock{
-  position: fixed;
-  left: 20px;
-  bottom: 22px;
-  z-index: var(--z-fab);
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  height: 44px;
-  max-width: min(360px, calc(100vw - 180px));
-  padding: 0 16px 0 14px;
+  gap: 10px;
+  min-width: 0;
   border: 1px solid var(--line);
-  border-radius: var(--r-pill);
-  background: color-mix(in srgb, var(--surface) 86%, transparent);
-  -webkit-backdrop-filter: blur(12px) saturate(1.3);
-  backdrop-filter: blur(12px) saturate(1.3);
+  background: var(--surface-2);
   color: var(--ink);
-  font-size: .86rem;
-  font-weight: 700;
-  box-shadow: var(--sh-2);
-  animation: dockIn .5s cubic-bezier(.34, 1.56, .64, 1) both;
-  transition: transform var(--t) var(--spring);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  animation: dockIn .45s cubic-bezier(.34, 1.56, .64, 1) both;
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 .now-dock[hidden]{ display: none; }
-.now-dock:hover{ transform: translateY(-2px); }
-.now-dock span:last-child{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.now-dock:hover{ border-color: var(--brand-line); background: var(--brand-soft); }
+.now-dock:focus-visible{ outline: 2.5px solid var(--info); outline-offset: 2px; }
+.nd-txt{ display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.nd-txt small{ font-size: .64rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); }
+.nd-txt b{ font-size: .84rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 .nd-dot{ flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--now); box-shadow: 0 0 0 0 var(--now); animation: dockPulse 2s ease-out infinite; }
-@keyframes dockIn{ from{ opacity: 0; transform: translateY(16px) scale(.9); } }
+@keyframes dockIn{ from{ opacity: 0; transform: translateY(8px) scale(.96); } }
 @keyframes dockPulse{ 0%{ box-shadow: 0 0 0 0 color-mix(in srgb, var(--now) 55%, transparent); } 100%{ box-shadow: 0 0 0 9px transparent; } }
-html[data-chat="left"] .now-dock{ left: auto; right: 84px; }
-body.chat-open .now-dock{ display: none; }
 @media (max-width: 900px){
-  .now-dock{ left: 12px; bottom: calc(var(--bottom-h) + 12px + env(safe-area-inset-bottom)); max-width: calc(100vw - 84px); height: 40px; }
-  html[data-chat="left"] .now-dock{ left: 12px; right: auto; }
+  .now-dock{ height: 36px; padding: 0 12px 0 10px; border-radius: var(--r-pill); margin-left: auto; max-width: 46vw; }
+  .nd-txt small{ display: none; }
+  .now-dock:not([hidden]) + .hdr-right{ margin-left: 0; }
+}
+@media (max-width: 380px){ .now-dock{ max-width: 38vw; } }
+@media (min-width: 901px){
+  .now-dock{ flex: none; margin-top: auto; padding: 10px 12px; border-radius: 12px; }
+  .now-dock:not([hidden]) ~ .hdr-right{ margin-top: 8px; }
+}
+@media (min-width: 901px) and (max-width: 1099px){
+  .now-dock{ justify-content: center; width: 44px; height: 44px; padding: 0; }
+  .now-dock .nd-txt{ display: none; }
+}
+@media (min-width: 901px){
+  html[data-rail="on"] .now-dock{ justify-content: center; width: 44px; height: 44px; padding: 0; }
+  html[data-rail="on"] .now-dock .nd-txt{ display: none; }
 }
 
 /* settings bits */
@@ -1485,3 +1495,80 @@ em.opt{ font-style: normal; font-weight: 500; color: var(--ink-4); font-size: .8
 .person.r-admin{ --rc: var(--brand); }
 .person.r-teacher{ --rc: #1E9E62; }
 .person.r-mod{ --rc: #2F6FD6; }
+.verify-note{ margin-top: 8px; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--warn, #C58A06) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warn, #C58A06) 30%, transparent); }
+.verify-note b{ display: block; font-size: .92rem; }
+.verify-note small{ display: block; margin: 3px 0 10px; color: var(--ink-3); font-size: .82rem; line-height: 1.45; }
+
+/* =========================================================
+   v3.3 polish: readable text over the campus photos
+   ========================================================= */
+/* fine print that sits on the page, not in a card, gets a pane of its own */
+html.campus-on .trust{
+  width: fit-content;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 84%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--ink-2);
+}
+/* empty lists read as a solid card, so a busy photo can't show through */
+html.campus-on .empty-state, html.campus-on .empty{
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+html.lite.campus-on .trust, html.lite.campus-on .empty-state, html.lite.campus-on .empty{ background: var(--surface); }
+
+/* hero chips share the row evenly, so one never dangles on its own line */
+@media (min-width: 761px){ .th-stats .stat{ flex: 1 1 auto; } }
+:root[data-theme="dark"] .brand-txt b{ color: var(--ink); }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .brand-txt b{ color: var(--ink); } }
+
+/* phones: filter chips stay on one line and swipe sideways, so the list
+   itself starts near the top instead of under three rows of subjects */
+@media (max-width: 760px){
+  .chip-row{
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    margin-left: -14px;
+    margin-right: -14px;
+    padding: 2px 14px;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 22px), transparent 100%);
+  }
+  .chip-row::-webkit-scrollbar{ display: none; }
+  .chip-row .chip-btn{ flex: none; }
+  .toolbar > .chip-row{ flex: 1 1 100%; min-width: 0; }
+}
+@media (max-width: 900px){ .topbar-inner:has(.now-dock:not([hidden])) .brand-txt{ display: none; } }
+
+/* =========================================================
+   v3.3: the app layer (install, share, reminders)
+   ========================================================= */
+.side-install{ display: none; }
+@media (min-width: 901px){
+  .side-install:not([hidden]){
+    display: flex; align-items: center; gap: 12px; flex: none;
+    height: 38px; margin-top: 10px; padding: 0 12px;
+    border: 1px dashed var(--brand-line); border-radius: 10px;
+    background: transparent; color: var(--brand-ink);
+    font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer;
+    transition: background var(--t-fast) var(--ease);
+  }
+  .side-install:hover{ background: var(--brand-soft); }
+  .side-install .ic{ width: 18px; height: 18px; }
+  html[data-rail="on"] .side-install{ width: 48px; padding: 0; justify-content: center; align-self: center; }
+  html[data-rail="on"] .side-install .lbl{ display: none; }
+}
+@media (min-width: 901px) and (max-width: 1099px){
+  .side-install{ width: 48px; padding: 0 !important; justify-content: center; align-self: center; }
+  .side-install .lbl{ display: none; }
+}
+.howto{ margin: 14px 0 4px; padding-left: 22px; display: grid; gap: 10px; line-height: 1.5; }
+.share-preview{ margin: 14px 0; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); max-height: 160px; overflow: auto; }
+.share-preview b{ display: block; margin-bottom: 4px; }
+.share-preview p{ margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .9rem; color: var(--ink-2); }
+.share-go{ display: grid; gap: 10px; }

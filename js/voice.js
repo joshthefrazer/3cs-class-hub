@@ -1,4 +1,4 @@
-import { BE, canAdmin, dbErrMsg, myName, registerStream, toast, usingFirebase } from "./backend.js";
+import { BE, canAdmin, dbErrMsg, myName, registerStream, toast, usingFirebase, lazyStream, streams, noteErr } from "./backend.js";
 import { esc, svgIcon, openSheet, closeSheet } from "./text.js";
 import { avatarEl, displayName, onProfiles } from "./profile.js";
 import { openAuthSheet } from "./auth.js";
@@ -75,11 +75,14 @@ registerStream(function(db){
     announceNewPolls();
     renderVoice();
   }, function(){ pollsLoaded = true; renderVoice(); }));
-  subs.push(db.collection("feedback").orderBy("createdAt", "desc").limit(300).onSnapshot(function(qs){
-    feedback = qs.docs.map(function(d){ return Object.assign({ id: d.id }, d.data({ serverTimestamps: "estimate" })); });
-    fbLoaded = true;
-    renderFeedback();
-  }, function(){ fbLoaded = true; renderFeedback(); }));
+  // feedback only loads once someone opens the section (see lazyStream)
+  lazyStream("voice", function(){
+    streams.push(db.collection("feedback").orderBy("createdAt", "desc").limit(300).onSnapshot(function(qs){
+      feedback = qs.docs.map(function(d){ return Object.assign({ id: d.id }, d.data({ serverTimestamps: "estimate" })); });
+      fbLoaded = true;
+      renderFeedback();
+    }, function(err){ noteErr("feedback", err); fbLoaded = true; renderFeedback(); }));
+  });
   return subs;
 }, function(){
   Object.keys(voteSubs).forEach(function(k){ try{ voteSubs[k](); }catch(e){} });

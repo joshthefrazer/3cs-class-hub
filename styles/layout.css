@@ -248,8 +248,6 @@ nav.tabs button.active .ic{ stroke-width: 2.1; }
   /* the chat has its own place in the sidebar, so the floating button goes */
   body .chat-fab{ display: none; }
   body .to-top{ bottom: 24px; }
-  body .now-dock{ left: calc(var(--side-w) + 20px); }
-  html[data-chat="left"] body .now-dock{ left: auto; right: 24px; }
   html[data-chat="left"] .messenger{ left: calc(var(--side-w) + 16px); }
   body .custom-bar{ left: calc(50% + var(--side-w) / 2); }
 }

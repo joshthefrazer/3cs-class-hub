@@ -1,0 +1,44 @@
+{
+  "name": "3cs-hub-desktop",
+  "productName": "3CS Hub",
+  "version": "1.0.0",
+  "description": "The 3CS Class Hub as a desktop app: tray countdown, class reminders, quick add.",
+  "main": "main.js",
+  "author": "3CS, Itz'at STEAM Academy",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never",
+    "release": "electron-builder --win --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "bz.itzat.3cshub",
+    "productName": "3CS Hub",
+    "copyright": "3CS, Itz'at STEAM Academy",
+    "directories": { "output": "dist", "buildResources": "build" },
+    "files": ["main.js", "preload.js", "offline.html", "assets/**", "package.json"],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build/icon.ico",
+      "artifactName": "3CS-Hub-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "3CS Hub",
+      "deleteAppDataOnUninstall": false
+    },
+    "linux": { "target": ["AppImage"], "category": "Education", "icon": "build/icon.png" },
+    "publish": [{ "provider": "github", "owner": "joshthefrazer", "repo": "3cs-class-hub", "releaseType": "release" }]
+  }
+}

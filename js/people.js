@@ -19,7 +19,15 @@ import { roleBadgeHtml, canModerate, roleOf } from "./roles.js";
    "active 5 min ago" come from.
    ========================================================= */
 
-var TOUCH_EVERY = 10 * 60 * 1000;
+/* Every presence write is read by every other open Hub, so it costs a read
+   per classmate. Written at most every 20 minutes, and only while you're
+   actually using the page: a tab left open all day stops writing. */
+var TOUCH_EVERY = 20 * 60 * 1000;
+var ACTIVE_FOR = 25 * 60 * 1000;
+var lastInput = Date.now();
+["pointerdown", "keydown", "wheel", "touchstart"].forEach(function(t){
+  window.addEventListener(t, function(){ lastInput = Date.now(); }, { passive: true, capture: true });
+});
 var lastTouch = 0;
 var selected = {};
 var query = "";
@@ -43,12 +51,12 @@ function seenMs(p){
   if (typeof v.toMillis === "function") return v.toMillis();
   var t = Date.parse(v); return isNaN(t) ? 0 : t;
 }
-function isOnline(uid){ return Date.now() - seenMs(dir()[uid]) < 15 * 60 * 1000; }
+function isOnline(uid){ return Date.now() - seenMs(dir()[uid]) < ACTIVE_FOR; }
 function seenText(p){
   var ms = seenMs(p);
   if (!ms) return "";
   var s = (Date.now() - ms) / 1000;
-  if (s < 15 * 60) return "Active now";
+  if (s < ACTIVE_FOR / 1000) return "Active now";
   if (s < 3600) return "Active " + Math.floor(s / 60) + " min ago";
   if (s < 86400) return "Active " + Math.floor(s / 3600) + "h ago";
   var d = Math.floor(s / 86400);
@@ -58,7 +66,8 @@ function emailOf(uid){ var p = dir()[uid]; return p && p.listed !== false && p.e
 function myListing(){
   if (!BE.user) return null;
   var me = dir()[BE.user.id];
-  if (me) return me.listed !== false;
+  // an unverified account is stored unlisted, so its own choice lives here
+  if (me && BE.user.verified !== false) return me.listed !== false;
   try{ return localStorage.getItem("3cs_listed") !== "0"; }catch(e){ return true; }
 }
 
@@ -66,9 +75,12 @@ function myListing(){
 function touchDirectory(force){
   if (!usingFirebase() || !BE.user || !BE.db) return Promise.resolve();
   if (!force && Date.now() - lastTouch < TOUCH_EVERY) return Promise.resolve();
+  if (!force && Date.now() - lastInput > 5 * 60 * 1000) return Promise.resolve();
   lastTouch = Date.now();
   var listed = myListing();
   if (listed === null) listed = true;
+  // the rules only let a proven address be shown
+  if (BE.user.verified === false) listed = false;
   var row = {
     name: displayName(BE.user.id, BE.user.name).slice(0, 40) || "Someone",
     email: listed ? BE.user.email : "",
@@ -82,7 +94,8 @@ function setListed(on){
   try{ localStorage.setItem("3cs_listed", on ? "1" : "0"); }catch(e){}
   if (!BE.user) return Promise.resolve();
   var d = state.directory = state.directory || {};
-  d[BE.user.id] = Object.assign({}, d[BE.user.id] || {}, { listed: on, email: on ? BE.user.email : "" });
+  var show = on && BE.user.verified !== false;
+  d[BE.user.id] = Object.assign({}, d[BE.user.id] || {}, { listed: show, email: show ? BE.user.email : "" });
   renderPeople();
   return touchDirectory(true);
 }

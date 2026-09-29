@@ -1,6 +1,7 @@
 import { avatarEl } from "./profile.js";
 import { getPref } from "./settings.js";
 import { svgIcon } from "./text.js";
+import { messageAlert, setBadge } from "./app.js";
 
 /* =========================================================
    SIDE NOTIFICATIONS - "what's up" cards for new messages.
@@ -39,6 +40,7 @@ function notify(n){
   if (mode === "off") return;
   if (mode === "direct" && n.kind === "main" && !n.mention) return;
   if (shown[n.key]) return;
+  try{ messageAlert(n); }catch(e){}
   var stack = document.getElementById("notifyStack");
   if (!stack) return;
 
@@ -121,7 +123,7 @@ function paintTitle(){
   var t = unread ? "(" + (unread > 9 ? "9+" : unread) + ") " + base : base;
   if (document.title !== t) document.title = t;
 }
-function setTitleCount(n){ unread = n || 0; paintTitle(); }
+function setTitleCount(n){ unread = n || 0; paintTitle(); try{ setBadge(unread); }catch(e){} }
 window.addEventListener("3cs:title", paintTitle);
 
 export { notify, clearFor, setTitleCount };

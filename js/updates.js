@@ -9,6 +9,29 @@
 
 var RELEASES = [
   {
+    version: "3.3",
+    date: "September 2026",
+    title: "The Hub as an app",
+    added: [
+      "Install the Hub on your phone, Chromebook or computer: it opens in its own window and the timetable works offline",
+      "A desktop app for Windows with the current class in the tray, reminders even with the window closed, and Ctrl+Alt+A to add work",
+      "Class reminders a few minutes before each session, and a daily homework check (Settings > Reminders)",
+      "System notifications for messages when the Hub isn't the window you're looking at",
+      "The unread count shows on the app icon",
+      "Share a link from another app straight into the class chat, a note or a new assignment",
+      "Shortcuts on the app icon for Today, Work, Add assignment and Chat",
+      "The \"right now\" pill lives in the menu instead of floating over the page"
+    ],
+    fixed: [
+      "Admin and owner powers now need a confirmed email, so nobody can claim an address that isn't theirs",
+      "The Hub loads faster: Notes, Help and Feedback load when you open them, and campus photos load after the page",
+      "\"Active now\" uses far fewer database reads, which keeps the class inside the free daily limit",
+      "Small print and empty lists stay readable over the campus photos",
+      "Filters on phones fit on one line you can swipe",
+      "Better contrast for subject tags, finished classes and toggles, plus fixes for screen readers and keyboards"
+    ]
+  },
+  {
     version: "3.2",
     date: "September 2026",
     title: "Easier to get around",

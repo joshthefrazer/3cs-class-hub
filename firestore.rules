@@ -27,14 +27,22 @@ service cloud.firestore {
     // The owners are hard-coded so there is always an admin who cannot be
     // locked out, even if the admins document is deleted. Owners can see and
     // moderate everything, including private chats.
+    // An email only counts once it's proven. Google sign-in always proves
+    // it; an email-and-password account has to click the link it was sent.
+    // Without this anyone could register an admin's address with a password
+    // and inherit their powers.
+    function verified() {
+      return signedIn() && request.auth.token.get('email_verified', false) == true;
+    }
+
     function isOwner() {
-      return signedIn() && myEmail() in ['joshthefrazer@gmail.com', 'joshua.malic@sls.edu.bz'];
+      return verified() && myEmail() in ['joshthefrazer@gmail.com', 'joshua.malic@sls.edu.bz'];
     }
 
     // Everyone else becomes an admin by being listed in config/admins.
     function isAdmin() {
       return isOwner() || (
-        signedIn() &&
+        verified() &&
         exists(/databases/$(database)/documents/config/admins) &&
         myEmail() in get(/databases/$(database)/documents/config/admins).data.emails
       );
@@ -332,7 +340,7 @@ service cloud.firestore {
                     && request.resource.data.name.size() > 0
                     && request.resource.data.name.size() <= 40
                     && request.resource.data.listed is bool
-                    && ((request.resource.data.listed == true && request.resource.data.email == myEmail())
+                    && ((request.resource.data.listed == true && verified() && request.resource.data.email == myEmail())
                         || (request.resource.data.listed == false && request.resource.data.email == ''))
                     && request.resource.data.lastSeen == request.time
                     && request.resource.data.updatedAt is string

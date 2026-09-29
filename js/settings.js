@@ -13,6 +13,7 @@ import { setBackgroundMode, bgMode, openGallery, setCustomImage, customImage } f
 import { compressImage, pickFiles } from "./media.js";
 import { canModerate, canAnnounce, roleBadgeHtml, openMembers } from "./roles.js";
 import { lookHtml, layoutHtml, wireLook, lookHooks } from "./layout.js";
+import { alertsHtml, wireAlerts, canInstall, install } from "./app.js";
 
 /* =========================================================
    SETTINGS - everything here is a preference for this browser, except
@@ -20,7 +21,7 @@ import { lookHtml, layoutHtml, wireLook, lookHooks } from "./layout.js";
    ========================================================= */
 
 var DEFAULTS = {
-  "3cs_intro_mode": "daily",   // daily | updates | off
+  "3cs_intro_mode": (window.hubDesktop || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)) ? "updates" : "daily",   // daily | updates | off
   "3cs_motion":     "system",  // system | reduce
   "3cs_ntf":        "all",     // all | direct | off
   "3cs_ntf_sound":  "off",     // on | off
@@ -53,6 +54,7 @@ var PANES = [
   ["look", "i-sparkles", "Look"],
   ["layout", "i-grid", "Layout"],
   ["chat", "i-msg", "Chat"],
+  ["alerts", "i-bell", "Reminders"],
   ["welcome", "i-play", "Welcome"],
   ["account", "i-user", "Account"],
   ["staff", "i-shield", "Admin"],
@@ -94,7 +96,11 @@ function openSettings(pane){
       (signedIn
         ? '<div class="set-row"><div><b>' + esc(BE.user.name) + ' ' + roleBadgeHtml(BE.user.id) + '</b><small>' + esc(BE.user.email) + '</small></div>' +
           '<div class="btn-row"><button class="btn ghost sm" id="setProfile" type="button">' + svgIcon("i-user") + ' Profile</button>' +
-          '<button class="btn ghost sm" id="setOut" type="button">' + svgIcon("i-logout") + ' Sign out</button></div></div>'
+          '<button class="btn ghost sm" id="setOut" type="button">' + svgIcon("i-logout") + ' Sign out</button></div></div>' +
+          (BE.user.verified === false
+            ? '<div class="verify-note"><b>Confirm your email</b><small>We sent a link to ' + esc(BE.user.email) + '. Until you open it your email stays hidden in People and staff roles tied to it don\'t switch on.</small>' +
+              '<div class="btn-row"><button class="btn sm" id="setVerified" type="button">I\'ve opened the link</button><button class="btn ghost sm" id="setResend" type="button">Send it again</button></div></div>'
+            : '')
         : (usingFirebase()
             ? '<div class="btn-row"><button class="btn" id="setIn" type="button">Sign in</button></div>'
             : '<p class="hint">This copy of the Hub has no accounts.</p>')) +
@@ -112,6 +118,7 @@ function openSettings(pane){
       (canAdmin() ? '<button class="staff-card" id="setEditor" type="button">' + svgIcon("i-edit") + '<b>Edit the site</b><small>Timetable, calendar, bells, banner</small></button>' : '') +
     '</div></section>';
   html.fix = fixHtml();
+  html.alerts = alertsHtml(row, seg);
   html.keys = '<section class="set-sec"><h3>Keyboard shortcuts</h3><div class="set-keys">' +
       '<span><kbd>Ctrl</kbd> <kbd>K</kbd></span><span>Search everything</span>' +
       '<span><kbd>1</kbd> to <kbd>8</kbd></span><span>Jump between sections</span>' +
@@ -157,6 +164,7 @@ function openSettings(pane){
     }
   });
   wireLook(box, closeSheet);
+  wireAlerts(box);
 
   box.querySelectorAll('input[name="setTheme"]').forEach(function(r){
     r.addEventListener("change", function(){ if (r.checked) setTheme(r.value); });
@@ -203,6 +211,20 @@ function openSettings(pane){
     }).catch(function(){ lst.checked = !lst.checked; toast("Couldn't change that. Try again.", true); });
   });
   function on(id, fn){ var e = box.querySelector("#" + id); if (e) e.addEventListener("click", fn); }
+  on("setResend", function(){
+    var u = BE.auth && BE.auth.currentUser;
+    if (!u) return;
+    u.sendEmailVerification().then(function(){ toast("Sent. Check your inbox, and the spam folder."); })
+      .catch(function(){ toast("Couldn't send it just now. Try again in a minute.", true); });
+  });
+  on("setVerified", function(){
+    var u = BE.auth && BE.auth.currentUser;
+    if (!u) return;
+    u.reload().then(function(){
+      if (!u.emailVerified){ toast("Not confirmed yet. Open the link in the email first.", true); return; }
+      return u.getIdToken(true).then(function(){ toast("Email confirmed."); setTimeout(function(){ location.reload(); }, 700); });
+    }).catch(function(){ toast("Couldn't check just now. Try again.", true); });
+  });
   on("setCopyReport", function(){
     var txt = report();
     (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function(){ toast("Report copied. Paste it in Feedback or send it to an admin."); })
@@ -278,7 +300,8 @@ function openMoreSheet(){
     }).join("") +
     '<button type="button" class="more-item" data-do="search"><span class="si">' + svgIcon("i-search") + '</span><span><b>Search</b><small>Find anything in the Hub</small></span></button>' +
     '<button type="button" class="more-item" data-do="apps"><span class="si">' + svgIcon("i-grid") + '</span><span><b>Apps</b><small>Classroom, Docs, Canva and more</small></span></button>' +
-    '<button type="button" class="more-item" data-do="settings"><span class="si">' + svgIcon("i-settings") + '</span><span><b>Settings</b><small>Theme, notifications, privacy</small></span></button>' +
+    '<button type="button" class="more-item" data-do="settings"><span class="si">' + svgIcon("i-settings") + '</span><span><b>Settings</b><small>Theme, reminders, privacy</small></span></button>' +
+    (canInstall() ? '<button type="button" class="more-item" data-do="install"><span class="si">' + svgIcon("i-arrow-down") + '</span><span><b>Install the app</b><small>On your home screen, works offline</small></span></button>' : '') +
     '</div>'
   );
   box.querySelectorAll(".more-item").forEach(function(b){
@@ -290,6 +313,7 @@ function openMoreSheet(){
       } else if (b.dataset.do === "search") showPalette();
       else if (b.dataset.do === "apps") setTimeout(openLauncher, 30);
       else if (b.dataset.do === "settings") openSettings();
+      else if (b.dataset.do === "install") install();
     });
   });
 }

@@ -117,7 +117,7 @@ function apply(animate){
     var e = blk(id); if (!e) return;
     e.classList.toggle("blk-off", !!look.hidden[id]);
     e.classList.toggle("blk-min", !!look.collapsed[id]);
-    var c = e.querySelector(":scope > .card-head .blk-min-btn");
+    var c = e.querySelector(":scope > .card-head .blk-min-btn, :scope > .nd-head .blk-min-btn");
     if (c){
       c.setAttribute("aria-expanded", String(!look.collapsed[id]));
       c.setAttribute("aria-label", look.collapsed[id] ? "Expand " + NAMES[id] : "Collapse " + NAMES[id]);
@@ -166,7 +166,7 @@ function addCardTools(){
     var t = document.createElement("div");
     t.className = "blk-tools";
     t.innerHTML =
-      '<button type="button" class="blk-btn blk-min-btn" aria-expanded="true">' + svgIcon("i-chev-r") + "</button>" +
+      '<button type="button" class="blk-btn blk-min-btn" aria-expanded="true" aria-label="Collapse ' + esc(NAMES[id]) + '">' + svgIcon("i-chev-r") + "</button>" +
       '<button type="button" class="blk-btn blk-x" aria-label="Hide ' + esc(NAMES[id]) + '">' + svgIcon("i-close") + "</button>";
     t.querySelector(".blk-min-btn").addEventListener("click", function(){
       look.collapsed[id] = !look.collapsed[id];
@@ -310,7 +310,11 @@ function paintDock(){
     d.className = "now-dock";
     d.hidden = true;
     d.addEventListener("click", function(){ var t = document.querySelector('nav.tabs button[data-tab="schedule"]'); if (t) t.click(); });
-    document.body.appendChild(d);
+    /* It lives in the menu, not over the page: the foot of the sidebar on
+       computers, a chip in the top bar on phones. Floating, it covered
+       whatever was at the bottom of the screen. */
+    var bar = document.querySelector(".topbar-inner"), right = bar && bar.querySelector(".hdr-right");
+    if (right) bar.insertBefore(d, right); else document.body.appendChild(d);
   }
   var t = window.__hubTitle || "";
   var info = t.replace(/\s*\|\s*3CS$/, "");
@@ -318,8 +322,9 @@ function paintDock(){
            document.body.getAttribute("data-world") !== "schedule";
   d.hidden = !on;
   if (on){
-    d.innerHTML = '<span class="nd-dot" aria-hidden="true"></span><span></span>';
-    d.lastChild.textContent = info;
+    if (!d.querySelector(".nd-txt")) d.innerHTML = '<span class="nd-dot" aria-hidden="true"></span><span class="nd-txt"><small>Right now</small><b></b></span>';
+    d.querySelector(".nd-txt b").textContent = info;
+    d.title = info;
     d.setAttribute("aria-label", "Right now: " + info + ". Open Today");
   }
 }

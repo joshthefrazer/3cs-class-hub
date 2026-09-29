@@ -1,0 +1,96 @@
+{
+  "id": "./",
+  "name": "3CS Class Hub",
+  "short_name": "3CS Hub",
+  "description": "The 3CS timetable, homework, notes, chat and news for Itz'at STEAM Academy.",
+  "start_url": "./?source=app",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F3F3F6",
+  "theme_color": "#5B2B8C",
+  "lang": "en",
+  "categories": [
+    "education",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "assets/app/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/app/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/app/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Today",
+      "short_name": "Today",
+      "description": "Right now and the day's classes",
+      "url": "./?do=today",
+      "icons": [
+        {
+          "src": "assets/app/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Work",
+      "short_name": "Work",
+      "description": "What's due, soonest first",
+      "url": "./#work",
+      "icons": [
+        {
+          "src": "assets/app/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Add assignment",
+      "short_name": "Add work",
+      "description": "Post something the class has due",
+      "url": "./?do=add-work",
+      "icons": [
+        {
+          "src": "assets/app/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Class chat",
+      "short_name": "Chat",
+      "description": "The 3CS class chat",
+      "url": "./?do=chat",
+      "icons": [
+        {
+          "src": "assets/app/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "./",
+    "method": "GET",
+    "params": {
+      "title": "share_title",
+      "text": "share_text",
+      "url": "share_url"
+    }
+  }
+}

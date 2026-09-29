@@ -212,7 +212,7 @@ input[type="range"]{ accent-color: var(--brand); width: 100%; }
   border-radius: 9px;
   font-size: .86rem;
   font-weight: 650;
-  color: var(--ink-3);
+  color: var(--ink-2);
   transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 .seg input:checked + span{ background: var(--surface); color: var(--ink); box-shadow: var(--sh-1); }
@@ -307,7 +307,7 @@ input[type="range"]{ accent-color: var(--brand); width: 100%; }
   background: var(--surface-3);
   color: var(--ink-2);
 }
-.badge.subj{ background: color-mix(in srgb, var(--sc, var(--brand)) 14%, var(--surface)); color: color-mix(in srgb, var(--sc, var(--brand)) 80%, var(--ink)); }
+.badge.subj{ background: color-mix(in srgb, var(--sc, var(--brand)) 14%, var(--surface)); color: color-mix(in srgb, var(--sc, var(--brand)) 60%, var(--ink)); }
 .badge.pub{ background: var(--good-soft); color: var(--good); }
 .badge.link{ background: var(--info-soft); color: var(--info-ink); }
 .badge.priv{ background: var(--brand-soft); color: var(--brand-ink); }
