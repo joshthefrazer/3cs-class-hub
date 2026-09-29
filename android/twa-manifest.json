@@ -1,0 +1,81 @@
+{
+  "packageId": "bz.itzat.threecshub",
+  "host": "joshthefrazer.github.io",
+  "name": "3CS Class Hub",
+  "launcherName": "3CS Hub",
+  "display": "standalone",
+  "themeColor": "#5B2B8C",
+  "themeColorDark": "#000000",
+  "navigationColor": "#F3F3F6",
+  "navigationColorDark": "#000000",
+  "navigationDividerColor": "#000000",
+  "navigationDividerColorDark": "#000000",
+  "backgroundColor": "#F3F3F6",
+  "enableNotifications": true,
+  "startUrl": "/3cs-class-hub/?source=android",
+  "iconUrl": "https://joshthefrazer.github.io/3cs-class-hub/assets/app/icon-512.png",
+  "maskableIconUrl": "https://joshthefrazer.github.io/3cs-class-hub/assets/app/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "<path to 3cs-hub-android.keystore>",
+    "alias": "3cshub"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Today",
+      "shortName": "Today",
+      "url": "https://joshthefrazer.github.io/3cs-class-hub/?do=today",
+      "chosenIconUrl": "https://joshthefrazer.github.io/3cs-class-hub/assets/app/icon-192.png"
+    },
+    {
+      "name": "Work",
+      "shortName": "Work",
+      "url": "https://joshthefrazer.github.io/3cs-class-hub/#work",
+      "chosenIconUrl": "https://joshthefrazer.github.io/3cs-class-hub/assets/app/icon-192.png"
+    },
+    {
+      "name": "Add assignment",
+      "shortName": "Add work",
+      "url": "https://joshthefrazer.github.io/3cs-class-hub/?do=add-work",
+      "chosenIconUrl": "https://joshthefrazer.github.io/3cs-class-hub/assets/app/icon-192.png"
+    },
+    {
+      "name": "Class chat",
+      "shortName": "Chat",
+      "url": "https://joshthefrazer.github.io/3cs-class-hub/?do=chat",
+      "chosenIconUrl": "https://joshthefrazer.github.io/3cs-class-hub/assets/app/icon-192.png"
+    }
+  ],
+  "generatorApp": "unknown",
+  "webManifestUrl": "https://joshthefrazer.github.io/3cs-class-hub/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": false,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://joshthefrazer.github.io/3cs-class-hub/",
+  "minSdkVersion": 23,
+  "shareTarget": {
+    "action": "https://joshthefrazer.github.io/3cs-class-hub/",
+    "method": "GET",
+    "params": {
+      "title": "share_title",
+      "text": "share_text",
+      "url": "share_url"
+    }
+  },
+  "orientation": "default",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "launchHandlerClientMode": "",
+  "displayOverride": [],
+  "appVersion": "1.0.0"
+}

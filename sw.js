@@ -117,6 +117,8 @@ self.addEventListener("fetch", function(e){
   // everything else off-site (the database, sign-in) is left alone
   if (url.origin !== self.location.origin) return;
 
+  // the Android app download goes straight to the network, never into the saved copy
+  if (url.pathname.indexOf("/download/") > -1) return;
   // the site itself: fresh from the network, the saved copy only when offline
   e.respondWith(fetch(req).then(function(r){ return save(req, r); }).catch(function(){ return fromCache(req); }));
 });

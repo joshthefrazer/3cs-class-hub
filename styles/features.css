@@ -1572,3 +1572,20 @@ html.lite.campus-on .trust, html.lite.campus-on .empty-state, html.lite.campus-o
 .share-preview b{ display: block; margin-bottom: 4px; }
 .share-preview p{ margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .9rem; color: var(--ink-2); }
 .share-go{ display: grid; gap: 10px; }
+/* the one-time "get the Android app" suggestion */
+.apk-bar{
+  position: fixed; left: 12px; right: 12px;
+  bottom: calc(var(--bottom-h, 64px) + 12px + env(safe-area-inset-bottom));
+  z-index: var(--z-fab);
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 10px 10px 12px;
+  border: 1px solid var(--line); border-radius: 18px;
+  background: var(--surface); box-shadow: var(--sh-pop);
+  animation: dockIn .45s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.apk-bar img{ flex: none; border-radius: 10px; }
+.apk-bar span{ flex: 1; min-width: 0; line-height: 1.3; }
+.apk-bar b{ display: block; font-size: .92rem; }
+.apk-bar small{ display: block; font-size: .78rem; color: var(--ink-3); }
+.apk-bar .btn{ flex: none; }
+a.more-item{ text-decoration: none; color: inherit; }

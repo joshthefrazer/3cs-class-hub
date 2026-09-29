@@ -13,7 +13,7 @@ import { setBackgroundMode, bgMode, openGallery, setCustomImage, customImage } f
 import { compressImage, pickFiles } from "./media.js";
 import { canModerate, canAnnounce, roleBadgeHtml, openMembers } from "./roles.js";
 import { lookHtml, layoutHtml, wireLook, lookHooks } from "./layout.js";
-import { alertsHtml, wireAlerts, canInstall, install } from "./app.js";
+import { alertsHtml, wireAlerts, canInstall, install, offerApk, APK } from "./app.js";
 
 /* =========================================================
    SETTINGS - everything here is a preference for this browser, except
@@ -302,6 +302,7 @@ function openMoreSheet(){
     '<button type="button" class="more-item" data-do="apps"><span class="si">' + svgIcon("i-grid") + '</span><span><b>Apps</b><small>Classroom, Docs, Canva and more</small></span></button>' +
     '<button type="button" class="more-item" data-do="settings"><span class="si">' + svgIcon("i-settings") + '</span><span><b>Settings</b><small>Theme, reminders, privacy</small></span></button>' +
     (canInstall() ? '<button type="button" class="more-item" data-do="install"><span class="si">' + svgIcon("i-arrow-down") + '</span><span><b>Install the app</b><small>On your home screen, works offline</small></span></button>' : '') +
+    (offerApk() ? '<a class="more-item" href="' + APK + '" download="3CS-Hub.apk"><span class="si">' + svgIcon("i-arrow-down") + '</span><span><b>Get the Android app</b><small>Notifications, reminders, one tap to open</small></span></a>' : '') +
     '</div>'
   );
   box.querySelectorAll(".more-item").forEach(function(b){

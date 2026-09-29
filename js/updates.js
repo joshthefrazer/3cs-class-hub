@@ -14,7 +14,7 @@ var RELEASES = [
     title: "The Hub as an app",
     added: [
       "Install the Hub on your phone, Chromebook or computer: it opens in its own window and the timetable works offline",
-      "A desktop app for Windows with the current class in the tray, reminders even with the window closed, and Ctrl+Alt+A to add work",
+      "An Android app: download it from Settings > Reminders or the More menu on your phone",
       "Class reminders a few minutes before each session, and a daily homework check (Settings > Reminders)",
       "System notifications for messages when the Hub isn't the window you're looking at",
       "The unread count shows on the app icon",

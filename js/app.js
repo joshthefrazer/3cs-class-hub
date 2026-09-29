@@ -30,8 +30,21 @@ var swReg = null;
 function pref(k, d){ try{ var v = localStorage.getItem(k); return v == null ? d : v; }catch(e){ return d; } }
 function setPref(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
 
+/* The Android app opens the Hub with ?source=android (and Chrome passes
+   the app as the referrer); remember it for the rest of the visit. */
+var APK = "download/3cs-hub.apk";
+var androidApp = (function(){
+  try{
+    if (/[?&]source=android\b/.test(location.search) || String(document.referrer).indexOf("android-app://bz.itzat.threecshub") === 0) sessionStorage.setItem("3cs_android_app", "1");
+    return sessionStorage.getItem("3cs_android_app") === "1";
+  }catch(e){ return false; }
+})();
+function isAndroid(){ return /Android/i.test(navigator.userAgent); }
+function isAndroidApp(){ return androidApp; }
+/* someone on an Android phone, in the browser rather than the app */
+function offerApk(){ return isAndroid() && !androidApp; }
 function isStandalone(){
-  return !!D || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+  return !!D || androidApp || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
 }
 function isIOS(){ return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1); }
 
@@ -64,7 +77,7 @@ function initInstall(){
   });
   paintInstall();
 }
-function canInstall(){ return !!installEvt || (isIOS() && !isStandalone()); }
+function canInstall(){ return !offerApk() && (!!installEvt || (isIOS() && !isStandalone())); }
 function install(){
   if (installEvt){
     var e = installEvt;
@@ -284,6 +297,28 @@ function initDesktop(){
   push();
 }
 
+/* ------------------------------------------------------- android app -- */
+function apkButton(label){
+  return '<a class="btn sm" href="' + APK + '" download="3CS-Hub.apk">' + svgIcon("i-arrow-down") + " " + (label || "Download") + "</a>";
+}
+/* A one-time suggestion for Android phones using the browser. */
+function offerApkBar(){
+  if (!offerApk() || pref("3cs_apk_bar", "") === "no") return;
+  setTimeout(function(){
+    if (document.getElementById("apkBar")) return;
+    var bar = document.createElement("div");
+    bar.id = "apkBar";
+    bar.className = "apk-bar";
+    bar.setAttribute("role", "region");
+    bar.setAttribute("aria-label", "Get the Android app");
+    bar.innerHTML = '<img src="assets/app/icon-192.png" alt="" width="40" height="40"><span><b>3CS Hub for Android</b><small>Notifications, reminders and one tap to open</small></span>' +
+      apkButton("Get it") + '<button class="icon-btn flat sm" type="button" aria-label="Not now">' + svgIcon("i-close") + "</button>";
+    bar.querySelector("a").addEventListener("click", function(){ setPref("3cs_apk_bar", "no"); setTimeout(function(){ bar.remove(); toast("Downloading. Open it from your notifications, then tap Install."); }, 300); });
+    bar.querySelector(".icon-btn").addEventListener("click", function(){ setPref("3cs_apk_bar", "no"); bar.remove(); });
+    document.body.appendChild(bar);
+  }, 5000);
+}
+
 /* --------------------------------------------------- settings section -- */
 function alertsHtml(row, seg){
   var perm = D ? "granted" : ("Notification" in window ? Notification.permission : "unsupported");
@@ -295,15 +330,17 @@ function alertsHtml(row, seg){
       row("Homework check", "What's due tomorrow and anything overdue, once a day.", '<select id="setRemindWork" aria-label="Homework check time">' +
         [["off", "Off"], ["15:30", "3:30 PM"], ["18:00", "6:00 PM"], ["20:00", "8:00 PM"]].map(function(o){ return '<option value="' + o[0] + '"' + (pref("3cs_remind_work", D ? "18:00" : "off") === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select>") +
       row("Messages while you're away", "A system notification when the Hub isn't the window you're looking at.", '<input type="checkbox" class="switch" id="setSysNtf"' + (pref("3cs_sys_ntf", "on") === "on" ? " checked" : "") + ">") +
-      '<p class="hint">' + (D ? "The desktop app keeps these going from the tray, even with the window closed." : "These work while the Hub is open. The desktop app keeps them going from the tray.") + "</p>" +
+      '<p class="hint">' + (D ? "The desktop app keeps these going from the tray, even with the window closed." : androidApp ? "They arrive as normal Android notifications." : "These work while the Hub is open.") + "</p>" +
     "</section>" +
     '<section class="set-sec"><h3>The app</h3>' +
       (D ? row("Desktop app", "Version " + esc(String(D.version || "")) + ". Everything updates on its own.", "") +
            row("Start with my computer", "Opens quietly in the tray when you log in.", '<input type="checkbox" class="switch" id="setLogin"' + (D.getSetting && D.getSetting("openAtLogin") ? " checked" : "") + ">") +
            row("Closing keeps it in the tray", "So reminders and messages still come through.", '<input type="checkbox" class="switch" id="setTray"' + (!D.getSetting || D.getSetting("closeToTray") !== false ? " checked" : "") + ">")
-         : (isStandalone() ? row("Installed", "You're using the Hub as an app.", "") :
+         : (androidApp ? row("Android app", "You're using the 3CS Hub app. It updates by itself whenever the Hub does.", "") :
+           isStandalone() ? row("Installed", "You're using the Hub as an app.", "") :
+           isAndroid() ? "" :
            row("Install the Hub", isIOS() ? "Add it to your home screen from Safari." : "It opens in its own window, starts faster and works offline for the timetable.", '<button class="btn sm js-install" type="button"' + (canInstall() ? "" : " hidden") + ">Install</button>")) +
-           row("Desktop app for Windows", "Tray countdown, reminders with the window closed, and a quick-add shortcut.", '<a class="btn ghost sm" href="https://github.com/joshthefrazer/3cs-class-hub/releases/latest" target="_blank" rel="noopener">Download</a>')) +
+           (androidApp || isIOS() ? "" : row("Android app", isAndroid() ? "The Hub as a real app on your phone. Android asks once to allow installing it; say yes." : "For Android phones. Open this page on your phone to download it, or send them the link.", apkButton()))) +
     "</section>";
 }
 function wireAlerts(box){
@@ -332,6 +369,8 @@ function wireAlerts(box){
 function initApp(){
   registerSW();
   initInstall();
+  offerApkBar();
+  document.documentElement.classList.toggle("is-android-app", androidApp);
   initDesktop();
   handleLaunch();
   document.addEventListener("click", function(e){ var b = e.target.closest && e.target.closest(".js-install"); if (b && !b.closest(".set-pane")) install(); });
@@ -345,4 +384,4 @@ function initApp(){
   });
 }
 
-export { initApp, systemNotify, messageAlert, setBadge, route, alertsHtml, wireAlerts, install, canInstall, isStandalone };
+export { initApp, systemNotify, messageAlert, setBadge, route, alertsHtml, wireAlerts, install, canInstall, isStandalone, offerApk, apkButton, APK };
